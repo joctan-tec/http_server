@@ -7,3 +7,9 @@ git clone https://github.com/joctan-tec/http_server.git
 cd http_server/src/
 cargo run
 ```
+## Endpoints 
+Obtener información sobre escuderías (conductores: nombre, edad y país) 
+```
+Método: GET
+http://127.0.0.1:7000/api/escuderias
+```
