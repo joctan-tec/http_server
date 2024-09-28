@@ -2,10 +2,11 @@ use std::fs;
 use std::io::{prelude::*, BufReader};
 use std::net::{TcpListener, TcpStream};
 use serde::{Deserialize, Serialize};
-use serde_json::{self, Value};
+use serde_json::Value;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::sync::mpsc::{self, Sender, Receiver};
+use std::process::{Command, Output};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Piloto {
@@ -32,16 +33,120 @@ fn load_json(filename: &str) -> Result<Datos, Box<dyn std::error::Error>> {
     Ok(datos)
 }
 
-fn handle_connection(mut stream: TcpStream, datos: &Datos) {
-    let mut buf_reader = BufReader::new(&mut stream);
-    let mut request_line = String::new();
-    
-    if buf_reader.read_line(&mut request_line).is_err() {
-        eprintln!("Failed to read request line");
-        return; // Salir si no se pudo leer la línea de solicitud
+/// Guarda los datos actualizados en el archivo JSON
+fn guardar_json(filename: &str, datos: &Datos) -> Result<(), Box<dyn std::error::Error>> {
+    let json_data = serde_json::to_string_pretty(datos)?;
+    fs::write(filename, json_data)?;
+    Ok(())
+}
+
+/// Analiza la línea de solicitud HTTP y devuelve el método y la ruta
+fn parse_request_line(request_line: &str) -> (&str, String) {
+    let parts: Vec<&str> = request_line.split_whitespace().collect();
+    if parts.len() < 2 {
+        return ("", "".to_string());
+    }
+    (parts[0], parts[1].to_string())
+}
+
+/// Función para ejecutar el script de Python y capturar su salida o error
+fn execute_python_script(option: &str, name: &str) -> Result<Value, String> {
+    let output: Output = Command::new("python3")
+        .arg("scripts/json_management.py") //Path al script de Python
+        .arg("--option")
+        .arg(option)
+        .arg("--name")
+        .arg(name)
+        .output()
+        .expect("Failed to execute Python script");
+
+    if output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        serde_json::from_str(&stdout).map_err(|e| e.to_string())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(stderr.to_string())
+    }
+}
+
+/// Maneja la operación GET para devolver los datos completos del JSON
+fn handle_get() -> (&'static str, String) {
+    let option = "0"; // Opción para GET
+    let dummy_name = ""; // No se necesita el nombre del archivo para GET
+
+    match execute_python_script(option, dummy_name) {
+        Ok(response) => ("HTTP/1.1 200 OK", response.to_string()),
+        Err(error_message) => ("HTTP/1.1 500 INTERNAL SERVER ERROR", error_message),
+    }
+}
+
+/// Maneja la operación POST para crear una nueva escudería
+fn handle_post(body: &str) -> (&'static str, String) {
+    let option = "1"; // Opción para POST
+    match execute_python_script(option, body) {
+        Ok(response) => ("HTTP/1.1 201 CREATED", response.to_string()),
+        Err(error_message) => ("HTTP/1.1 500 INTERNAL SERVER ERROR", error_message),
+    }
+}
+
+/// Maneja la operación PUT para actualizar una escudería existente
+fn handle_put(path: &str, body: &str) -> (&'static str, String) {
+    let parts: Vec<&str> = path.split("/").collect();
+    if parts.len() < 4 {
+        let error_response = r#"{"error": "Invalid path"}"#;
+        return ("HTTP/1.1 400 BAD REQUEST", error_response.to_string());
     }
 
-    println!("Request line: {}", request_line); // Log de la línea de solicitud
+    let option = "2"; // Opción para PUT
+    match execute_python_script(option, body) {
+        Ok(response) => ("HTTP/1.1 200 OK", response.to_string()),
+        Err(error_message) => ("HTTP/1.1 500 INTERNAL SERVER ERROR", error_message),
+    }
+}
+
+/// Maneja la operación DELETE para eliminar una escudería existente
+fn handle_delete(path: &str) -> (&'static str, String) {
+    let parts: Vec<&str> = path.split("/").collect();
+    if parts.len() < 4 {
+        let error_response = r#"{"error": "Invalid path"}"#;
+        return ("HTTP/1.1 400 BAD REQUEST", error_response.to_string());
+    }
+
+    let nombre_escuderia = parts[3].replace("%20", " ");
+    let option = "3"; // Opción para DELETE
+
+    match execute_python_script(option, &nombre_escuderia) {
+        Ok(response) => ("HTTP/1.1 200 OK", response.to_string()),
+        Err(error_message) => ("HTTP/1.1 500 INTERNAL SERVER ERROR", error_message),
+    }
+}
+
+/// Maneja la operación PATCH para actualizar un piloto específico
+fn handle_patch(path: &str, body: &str) -> (&'static str, String) {
+    let parts: Vec<&str> = path.split("/").collect();
+    if parts.len() < 6 {
+        let error_response = r#"{"error": "Invalid path"}"#;
+        return ("HTTP/1.1 400 BAD REQUEST", error_response.to_string());
+    }
+
+    let option = "4"; // Opción para PATCH
+    match execute_python_script(option, body) {
+        Ok(response) => ("HTTP/1.1 200 OK", response.to_string()),
+        Err(error_message) => ("HTTP/1.1 500 INTERNAL SERVER ERROR", error_message),
+    }
+}
+
+/// Maneja la conexión entrante y dirige la solicitud al método correspondiente
+fn handle_connection(mut stream: TcpStream) {
+    let mut buf_reader = BufReader::new(&mut stream);
+    let mut request_line = String::new();
+
+    if buf_reader.read_line(&mut request_line).is_err() {
+        eprintln!("Failed to read request line");
+        return;
+    }
+
+    println!("Request line: {}", request_line);
 
     // Leer encabezados
     let mut body = String::new();
@@ -51,7 +156,7 @@ fn handle_connection(mut stream: TcpStream, datos: &Datos) {
         let mut header_line = String::new();
         if buf_reader.read_line(&mut header_line).is_err() {
             eprintln!("Failed to read header line");
-            return; // Salir si no se pudo leer una línea de encabezado
+            return;
         }
 
         // Fin de los encabezados: línea vacía
@@ -74,52 +179,36 @@ fn handle_connection(mut stream: TcpStream, datos: &Datos) {
             Ok(_) => body.push_str(&String::from_utf8_lossy(&additional_body)),
             Err(e) => {
                 eprintln!("Failed to read body: {}", e);
-                return; // Salimos si no se pudo leer el cuerpo
+                return;
             }
         }
     }
 
-    println!("Body: {}", body); // Log del cuerpo de la solicitud
+    println!("Body: {}", body);
 
     // Procesar la línea de solicitud
     let (method, path) = parse_request_line(&request_line);
-    println!("Method: {}, Path: {}", method, path); // Log del método y la ruta
+    println!("Method: {}, Path: {}", method, path);
 
-    // Variable para almacenar la respuesta
-    let (status_line, response_body) = match (method, path) {
+    // Determinar y manejar la solicitud según el método y la ruta
+    let (status_line, response_body) = match (method, path.as_str()) {
         ("GET", "/api/escuderias") => {
-            let json_response = serde_json::to_string(datos).unwrap();
-            ("HTTP/1.1 200 OK", json_response)
+            // let datos_guard = datos.lock().unwrap();
+            // let json_response = serde_json::to_string(&*datos_guard).unwrap();
+            // ("HTTP/1.1 200 OK", json_response)
+            handle_get()
         }
-        ("POST", "/api/test") => {
-            if body.is_empty() {
-                let error_response = r#"{"error": "Empty body"}"#;
-                let length = error_response.len();
-                let response = format!(
-                    "HTTP/1.1 400 BAD REQUEST\r\nContent-Length: {length}\r\nContent-Type: application/json\r\n\r\n{error_response}"
-                );
-                if let Err(e) = stream.write_all(response.as_bytes()) {
-                    eprintln!("Failed to write response: {}", e);
-                }
-                return; // Salimos después de enviar la respuesta
-            }
-
-            match serde_json::from_str::<Value>(&body) {
-                Ok(json_body) => {
-                    ("HTTP/1.1 200 OK", json_body.to_string())
-                }
-                Err(_) => {
-                    let error_response = r#"{"error": "Invalid JSON"}"#;
-                    let length = error_response.len();
-                    let response = format!(
-                        "HTTP/1.1 400 BAD REQUEST\r\nContent-Length: {length}\r\nContent-Type: application/json\r\n\r\n{error_response}"
-                    );
-                    if let Err(e) = stream.write_all(response.as_bytes()) {
-                        eprintln!("Failed to write response: {}", e);
-                    }
-                    return;
-                }
-            }
+        ("POST", "/api/escuderias") => {
+            handle_post(&body)
+        }
+        ("PUT", path) if path.starts_with("/api/escuderias/") => {
+            handle_put(path, &body)
+        }
+        ("DELETE", path) if path.starts_with("/api/escuderias/") => {
+            handle_delete(path)
+        }
+        ("PATCH", path) if path.contains("/pilotos/") => {
+            handle_patch(path, &body)
         }
         _ => {
             let error_response = r#"{"error": "Not Found"}"#;
@@ -137,14 +226,7 @@ fn handle_connection(mut stream: TcpStream, datos: &Datos) {
     }
 }
 
-fn parse_request_line(request_line: &str) -> (&str, &str) {
-    let parts: Vec<&str> = request_line.split_whitespace().collect();
-    if parts.len() < 2 {
-        return ("", ""); // Manejo de error básico
-    }
-    (parts[0], parts[1]) // Método y ruta
-}
-
+/// Definición del ThreadPool y sus componentes
 pub struct ThreadPool {
     workers: Vec<Worker>,
     sender: Sender<Job>,
@@ -153,6 +235,7 @@ pub struct ThreadPool {
 type Job = Box<dyn FnOnce() + Send + 'static>;
 
 impl ThreadPool {
+    /// Crea un nuevo ThreadPool con el tamaño especificado
     pub fn new(size: usize) -> ThreadPool {
         let (sender, receiver) = mpsc::channel();
         let receiver = Arc::new(Mutex::new(receiver));
@@ -165,6 +248,7 @@ impl ThreadPool {
         ThreadPool { workers, sender }
     }
 
+    /// Ejecuta una nueva tarea en el ThreadPool
     pub fn execute<F>(&self, f: F)
     where
         F: FnOnce() + Send + 'static,
@@ -180,6 +264,7 @@ struct Worker {
 }
 
 impl Worker {
+    /// Crea un nuevo Worker y lo añade al ThreadPool
     fn new(id: usize, receiver: Arc<Mutex<Receiver<Job>>>) -> Worker {
         let thread = thread::spawn(move || loop {
             let job = receiver.lock().unwrap().recv().unwrap();
@@ -195,9 +280,10 @@ impl Worker {
 }
 
 impl Drop for ThreadPool {
+    /// Espera a que todos los hilos finalicen al destruir el ThreadPool
     fn drop(&mut self) {
         // Se deja de enviar trabajos al sender
-        drop(self.sender.clone()); // Clonamos el sender en lugar de moverlo
+        drop(self.sender.clone());
         for worker in &mut self.workers {
             if let Some(thread) = worker.thread.take() {
                 thread.join().unwrap();
@@ -208,7 +294,8 @@ impl Drop for ThreadPool {
 
 fn main() {
     // Cargar el JSON desde el archivo
-    let datos = load_json("./f1_data.json").expect("Failed to load JSON data");
+    // let datos = load_json("./f1_data.json").expect("Failed to load JSON data");
+    // let datos = Arc::new(Mutex::new(datos)); // Compartir datos de manera segura entre hilos
 
     let pool = ThreadPool::new(20);
     let listener = TcpListener::bind("127.0.0.1:7000").unwrap();
@@ -217,9 +304,9 @@ fn main() {
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
-        let datos_clone = datos.clone(); // Clonamos los datos para cada hilo
+        // let datos_clone = Arc::clone(&datos); // Clonar el Arc para pasarlo al hilo
         pool.execute(move || {
-            handle_connection(stream, &datos_clone);
+            handle_connection(stream);
         });
     }
 }

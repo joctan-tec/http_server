@@ -1,154 +1,154 @@
 {
-    "escuderias": [
-      {
-        "nombre": "Red Bull Racing",
-        "pilotos": [
-          {
-            "nombre": "Max Verstappen",
-            "edad": 25,
-            "nacionalidad": "Holandesa"
-          },
-          {
-            "nombre": "Sergio Pérez",
-            "edad": 33,
-            "nacionalidad": "Mexicana"
-          }
-        ]
-      },
-      {
-        "nombre": "Ferrari",
-        "pilotos": [
-          {
-            "nombre": "Charles Leclerc",
-            "edad": 25,
-            "nacionalidad": "Monegasca"
-          },
-          {
-            "nombre": "Carlos Sainz Jr.",
-            "edad": 29,
-            "nacionalidad": "Española"
-          }
-        ]
-      },
-      {
-        "nombre": "Mercedes",
-        "pilotos": [
-          {
-            "nombre": "Lewis Hamilton",
-            "edad": 38,
-            "nacionalidad": "Británica"
-          },
-          {
-            "nombre": "George Russell",
-            "edad": 25,
-            "nacionalidad": "Británica"
-          }
-        ]
-      },
-      {
-        "nombre": "Alpine F1 Team",
-        "pilotos": [
-          {
-            "nombre": "Esteban Ocon",
-            "edad": 26,
-            "nacionalidad": "Francesa"
-          },
-          {
-            "nombre": "Pierre Gasly",
-            "edad": 27,
-            "nacionalidad": "Francesa"
-          }
-        ]
-      },
-      {
-        "nombre": "McLaren",
-        "pilotos": [
-          {
-            "nombre": "Lando Norris",
-            "edad": 23,
-            "nacionalidad": "Británica"
-          },
-          {
-            "nombre": "Oscar Piastri",
-            "edad": 22,
-            "nacionalidad": "Australiana"
-          }
-        ]
-      },
-      {
-        "nombre": "Alfa Romeo F1 Team ORLEN",
-        "pilotos": [
-          {
-            "nombre": "Valtteri Bottas",
-            "edad": 34,
-            "nacionalidad": "Finlandesa"
-          },
-          {
-            "nombre": "Zhou Guanyu",
-            "edad": 24,
-            "nacionalidad": "China"
-          }
-        ]
-      },
-      {
-        "nombre": "Aston Martin Aramco Cognizant Formula One Team",
-        "pilotos": [
-          {
-            "nombre": "Fernando Alonso",
-            "edad": 41,
-            "nacionalidad": "Española"
-          },
-          {
-            "nombre": "Lance Stroll",
-            "edad": 24,
-            "nacionalidad": "Canadiense"
-          }
-        ]
-      },
-      {
-        "nombre": "AlphaTauri",
-        "pilotos": [
-          {
-            "nombre": "Yuki Tsunoda",
-            "edad": 23,
-            "nacionalidad": "Japonesa"
-          },
-          {
-            "nombre": "Nyck de Vries",
-            "edad": 28,
-            "nacionalidad": "Holandesa"
-          }
-        ]
-      },
-      {
-        "nombre": "Haas F1 Team",
-        "pilotos": [
-          {
-            "nombre": "Nico Hulkenberg",
-            "edad": 35,
-            "nacionalidad": "Alemana"
-          },
-          {
-            "nombre": "Kevin Magnussen",
-            "edad": 30,
-            "nacionalidad": "Danesa"
-          }
-        ]
-      },
-      {
-        "nombre": "Williams Racing",
-        "pilotos": [
-          {
-            "nombre": "Alex Albon",
-            "edad": 27,
-            "nacionalidad": "Tailandesa"
-          },
-          {
-            "nombre": "Logan Sargeant",
-            "edad": 22,
-            "nacionalidad": "Estadounidense"
-          }
-        ]
-      }
-    ]
-  }
+  "teams": [
+    {
+      "name": "Red Bull Racing",
+      "drivers": [
+        {
+          "name": "Max Verstappen",
+          "age": 25,
+          "nacionality": "Holandesa"
+        },
+        {
+          "name": "Sergio Pérez",
+          "age": 33,
+          "nacionality": "Mexicana"
+        }
+      ]
+    },
+    {
+      "name": "Ferrari",
+      "drivers": [
+        {
+          "name": "Charles Leclerc",
+          "age": 25,
+          "nacionality": "Monegasca"
+        },
+        {
+          "name": "Carlos Sainz Jr.",
+          "age": 29,
+          "nacionality": "Española"
+        }
+      ]
+    },
+    {
+      "name": "Mercedes",
+      "drivers": [
+        {
+          "name": "Lewis Hamilton",
+          "age": 38,
+          "nacionality": "Británica"
+        },
+        {
+          "name": "George Russell",
+          "age": 25,
+          "nacionality": "Británica"
+        }
+      ]
+    },
+    {
+      "name": "Alpine F1 Team",
+      "drivers": [
+        {
+          "name": "Esteban Ocon",
+          "age": 26,
+          "nacionality": "Francesa"
+        },
+        {
+          "name": "Pierre Gasly",
+          "age": 27,
+          "nacionality": "Francesa"
+        }
+      ]
+    },
+    {
+      "name": "McLaren",
+      "drivers": [
+        {
+          "name": "Lando Norris",
+          "age": 23,
+          "nacionality": "Británica"
+        },
+        {
+          "name": "Oscar Piastri",
+          "age": 22,
+          "nacionality": "Australiana"
+        }
+      ]
+    },
+    {
+      "name": "Alfa Romeo F1 Team ORLEN",
+      "drivers": [
+        {
+          "name": "Valtteri Bottas",
+          "age": 34,
+          "nacionality": "Finlandesa"
+        },
+        {
+          "name": "Zhou Guanyu",
+          "age": 24,
+          "nacionality": "China"
+        }
+      ]
+    },
+    {
+      "name": "Aston Martin Aramco Cognizant Formula One Team",
+      "drivers": [
+        {
+          "name": "Fernando Alonso",
+          "age": 41,
+          "nacionality": "Española"
+        },
+        {
+          "name": "Lance Stroll",
+          "age": 24,
+          "nacionality": "Canadiense"
+        }
+      ]
+    },
+    {
+      "name": "AlphaTauri",
+      "drivers": [
+        {
+          "name": "Yuki Tsunoda",
+          "age": 23,
+          "nacionality": "Japonesa"
+        },
+        {
+          "name": "Nyck de Vries",
+          "age": 28,
+          "nacionality": "Holandesa"
+        }
+      ]
+    },
+    {
+      "name": "Haas F1 Team",
+      "drivers": [
+        {
+          "name": "Nico Hulkenberg",
+          "age": 35,
+          "nacionality": "Alemana"
+        },
+        {
+          "name": "Kevin Magnussen",
+          "age": 30,
+          "nacionality": "Danesa"
+        }
+      ]
+    },
+    {
+      "name": "Williams Racing",
+      "drivers": [
+        {
+          "name": "Alex Albon",
+          "age": 27,
+          "nacionality": "Tailandesa"
+        },
+        {
+          "name": "Logan Sargeant",
+          "age": 22,
+          "nacionality": "Estadounidense"
+        }
+      ]
+    }
+  ]
+}
