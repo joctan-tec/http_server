@@ -134,9 +134,9 @@ def main():
                         
                         for key, value in request["body"].items():
                             driver[key] = value
-                            write_json_file(F1_DATA_PATH, f1_data)
-                            print_json({"message": "Driver updated successfully"})
-                            sys.exit(0)
+                        write_json_file(F1_DATA_PATH, f1_data)
+                        print_json({"message": "Driver updated successfully"})
+                        sys.exit(0)
                         
                 print(404)
         print(404)

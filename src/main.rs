@@ -1,13 +1,14 @@
 
+use std::fs;
 use std::io::{prelude::*, BufReader};
 use std::net::{TcpListener, TcpStream};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::sync::mpsc::{self, Sender, Receiver};
 use std::process::{Command, Output};
 use std::env;
+use serde_json::{json, Value};
 use std::path::PathBuf;
 use std::fs::File;
 use std::io::{self, Write};
@@ -108,7 +109,6 @@ fn handle_get() -> (&'static str, String) {
 
 /// Maneja la operación POST para crear una nueva escudería
 fn handle_post(body: &str) -> (&'static str, String) {
-    let option = "1"; // Opción para POST
     let json_request: Value = serde_json::from_str(body).unwrap();
     let current_dir = get_current_dir();
     let file_path = current_dir.join("tmp").join("new_escuderia.json");
@@ -117,7 +117,7 @@ fn handle_post(body: &str) -> (&'static str, String) {
     write_to_temp_file(&file_path, json_request.to_string()).unwrap();
 
     // Ejecutar el script de Python
-    let result = execute_python_script(option, "new_escuderia.json");
+    let result = execute_python_script("1", "new_escuderia.json");
     
     // Eliminar el archivo temporal
     if let Err(err) = delete_temp_file(&file_path) {
@@ -129,8 +129,6 @@ fn handle_post(body: &str) -> (&'static str, String) {
         Ok(response) => ("HTTP/1.1 201 CREATED", response.to_string()),
         Err(error_message) => ("HTTP/1.1 500 INTERNAL SERVER ERROR", error_message),
     }
-    
-    
 }
 
 /// Maneja la operación PUT para actualizar una escudería existente
@@ -141,8 +139,44 @@ fn handle_put(path: &str, body: &str) -> (&'static str, String) {
         return ("HTTP/1.1 400 BAD REQUEST", error_response.to_string());
     }
 
-    let option = "2"; // Opción para PUT
-    match execute_python_script(option, body) {
+    // Obtener el nombre del equipo (última parte del path)
+    let team_name = parts[3];
+
+    // Convertir el cuerpo de la petición (body) a un objeto JSON
+    let body_json: Value = match serde_json::from_str(body) {
+        Ok(json) => json,
+        Err(_) => {
+            let error_response = r#"{"error": "Invalid JSON body"}"#;
+            return ("HTTP/1.1 400 BAD REQUEST", error_response.to_string());
+        }
+    };
+
+    // Crear el JSON final que necesitamos
+    let json_request = json!({
+        "body": body_json,
+        "team": team_name
+    });
+
+    // Obtener el directorio actual y construir la ruta al archivo temporal
+    let current_dir = get_current_dir();
+    let file_path = current_dir.join("tmp").join("updated_escuderia.json");
+
+    // Escribir el JSON en el archivo temporal
+    if let Err(e) = fs::write(&file_path, json_request.to_string()) {
+        eprintln!("Error al escribir en el archivo temporal: {}", e);
+        return ("HTTP/1.1 500 INTERNAL SERVER ERROR", r#"{"error": "Failed to write temp file"}"#.to_string());
+    }
+
+    // Ejecutar el script de Python con la opción "2" para PUT
+    let result = execute_python_script("2", "updated_escuderia.json");
+
+    // Eliminar el archivo temporal
+    if let Err(err) = fs::remove_file(&file_path) {
+        eprintln!("Error al eliminar el archivo temporal: {}", err);
+    }
+
+    // Retornar la respuesta según el resultado
+    match result {
         Ok(response) => ("HTTP/1.1 200 OK", response.to_string()),
         Err(error_message) => ("HTTP/1.1 500 INTERNAL SERVER ERROR", error_message),
     }
@@ -156,10 +190,34 @@ fn handle_delete(path: &str) -> (&'static str, String) {
         return ("HTTP/1.1 400 BAD REQUEST", error_response.to_string());
     }
 
-    let nombre_escuderia = parts[3].replace("%20", " ");
-    let option = "3"; // Opción para DELETE
+    // Obtener el nombre del equipo (última parte del path)
+    let team_name = parts[3].replace("%20", " ");
 
-    match execute_python_script(option, &nombre_escuderia) {
+    // Crear el JSON que contiene el nombre del equipo a eliminar
+    let json_request = json!({
+        "team": team_name
+    });
+
+    // Obtener el directorio actual y construir la ruta al archivo temporal
+    let current_dir = std::env::current_dir().unwrap();
+    let file_path = current_dir.join("tmp").join("delete_escuderia.json");
+
+    // Escribir el JSON en el archivo temporal
+    if let Err(e) = fs::write(&file_path, json_request.to_string()) {
+        eprintln!("Error al escribir en el archivo temporal: {}", e);
+        return ("HTTP/1.1 500 INTERNAL SERVER ERROR", r#"{"error": "Failed to write temp file"}"#.to_string());
+    }
+
+    // Ejecutar el script de Python con la opción "3" para DELETE
+    let result = execute_python_script("3", "delete_escuderia.json");
+
+    // Eliminar el archivo temporal
+    if let Err(err) = fs::remove_file(&file_path) {
+        eprintln!("Error al eliminar el archivo temporal: {}", err);
+    }
+
+    // Retornar la respuesta según el resultado
+    match result {
         Ok(response) => ("HTTP/1.1 200 OK", response.to_string()),
         Err(error_message) => ("HTTP/1.1 500 INTERNAL SERVER ERROR", error_message),
     }
@@ -167,14 +225,53 @@ fn handle_delete(path: &str) -> (&'static str, String) {
 
 /// Maneja la operación PATCH para actualizar un piloto específico
 fn handle_patch(path: &str, body: &str) -> (&'static str, String) {
+    // Dividir el path para obtener los componentes
     let parts: Vec<&str> = path.split("/").collect();
     if parts.len() < 6 {
         let error_response = r#"{"error": "Invalid path"}"#;
         return ("HTTP/1.1 400 BAD REQUEST", error_response.to_string());
     }
 
-    let option = "4"; // Opción para PATCH
-    match execute_python_script(option, body) {
+    // Extraer el nombre del equipo y del piloto del path
+    let team_name = parts[3].replace("%20", " ");
+    let pilot_name = parts[5].replace("%20", " ");
+
+    // Convertir el cuerpo de la petición (body) a un objeto JSON
+    let body_json: Value = match serde_json::from_str(body) {
+        Ok(json) => json,
+        Err(_) => {
+            let error_response = r#"{"error": "Invalid JSON body"}"#;
+            return ("HTTP/1.1 400 BAD REQUEST", error_response.to_string());
+        }
+    };
+
+    // Crear el JSON final que necesitamos para actualizar el piloto
+    let json_request = json!({
+        "body": body_json,
+        "team": team_name,
+        "driver": pilot_name
+    });
+
+    // Obtener el directorio actual y construir la ruta al archivo temporal
+    let current_dir = std::env::current_dir().unwrap();
+    let file_path = current_dir.join("tmp").join("updated_piloto.json");
+
+    // Escribir el JSON en el archivo temporal
+    if let Err(e) = fs::write(&file_path, json_request.to_string()) {
+        eprintln!("Error al escribir en el archivo temporal: {}", e);
+        return ("HTTP/1.1 500 INTERNAL SERVER ERROR", r#"{"error": "Failed to write temp file"}"#.to_string());
+    }
+
+    // Ejecutar el script de Python con la opción "4" para PATCH
+    let result = execute_python_script("4", "updated_piloto.json");
+
+    // Eliminar el archivo temporal
+    if let Err(err) = fs::remove_file(&file_path) {
+        eprintln!("Error al eliminar el archivo temporal: {}", err);
+    }
+
+    // Retornar la respuesta según el resultado
+    match result {
         Ok(response) => ("HTTP/1.1 200 OK", response.to_string()),
         Err(error_message) => ("HTTP/1.1 500 INTERNAL SERVER ERROR", error_message),
     }
@@ -341,7 +438,6 @@ fn main() {
     // let datos = load_json("./f1_data.json").expect("Failed to load JSON data");
     // let datos = Arc::new(Mutex::new(datos)); // Compartir datos de manera segura entre hilos
     
-
     let pool = ThreadPool::new(20);
     let listener = TcpListener::bind("127.0.0.1:7000").unwrap();
 

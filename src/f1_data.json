@@ -16,17 +16,17 @@
             ]
         },
         {
-            "name": "Ferrari",
+            "name": "Ferrari HP",
             "drivers": [
                 {
+                    "age": 22,
                     "name": "Charles Leclerc",
-                    "age": 25,
-                    "nacionality": "Monegasca"
+                    "nationality": "Monacan"
                 },
                 {
+                    "age": 25,
                     "name": "Carlos Sainz Jr.",
-                    "age": 29,
-                    "nacionality": "Espa\u00f1ola"
+                    "nationality": "Spanish"
                 }
             ]
         },
@@ -161,51 +161,6 @@
                 {
                     "age": 29,
                     "name": "Antonio Giovinazzi",
-                    "nationality": "Italian"
-                }
-            ]
-        },
-        {
-            "name": "Brenda Team",
-            "drivers": [
-                {
-                    "age": 42,
-                    "name": "San Chequito",
-                    "nationality": "Finnish"
-                },
-                {
-                    "age": 29,
-                    "name": "Joctan",
-                    "nationality": "Italian"
-                }
-            ]
-        },
-        {
-            "name": "Brenda Team",
-            "drivers": [
-                {
-                    "age": 42,
-                    "name": "San Chequito",
-                    "nationality": "Finnish"
-                },
-                {
-                    "age": 29,
-                    "name": "Joctan",
-                    "nationality": "Italian"
-                }
-            ]
-        },
-        {
-            "name": "Brenda Team",
-            "drivers": [
-                {
-                    "age": 42,
-                    "name": "San Chequito",
-                    "nationality": "Finnish"
-                },
-                {
-                    "age": 29,
-                    "name": "Joctan",
                     "nationality": "Italian"
                 }
             ]
