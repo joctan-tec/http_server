@@ -1,4 +1,4 @@
-use std::fs;
+
 use std::io::{prelude::*, BufReader};
 use std::net::{TcpListener, TcpStream};
 use serde::{Deserialize, Serialize};
@@ -7,6 +7,11 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::sync::mpsc::{self, Sender, Receiver};
 use std::process::{Command, Output};
+use std::env;
+use std::path::PathBuf;
+use std::fs::File;
+use std::io::{self, Write};
+use std::path::Path;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Piloto {
@@ -26,19 +31,6 @@ struct Datos {
     escuderias: Vec<Escuderia>,
 }
 
-/// Carga el archivo JSON y devuelve los datos deserializados
-fn load_json(filename: &str) -> Result<Datos, Box<dyn std::error::Error>> {
-    let data = fs::read_to_string(filename)?;
-    let datos: Datos = serde_json::from_str(&data)?;
-    Ok(datos)
-}
-
-/// Guarda los datos actualizados en el archivo JSON
-fn guardar_json(filename: &str, datos: &Datos) -> Result<(), Box<dyn std::error::Error>> {
-    let json_data = serde_json::to_string_pretty(datos)?;
-    fs::write(filename, json_data)?;
-    Ok(())
-}
 
 /// Analiza la línea de solicitud HTTP y devuelve el método y la ruta
 fn parse_request_line(request_line: &str) -> (&str, String) {
@@ -49,10 +41,44 @@ fn parse_request_line(request_line: &str) -> (&str, String) {
     (parts[0], parts[1].to_string())
 }
 
+fn write_to_temp_file<P: AsRef<Path>>(path: P, content: String) -> io::Result<()> {
+    let mut file = File::create(path)?;
+    file.write_all(content.as_bytes())?;
+    Ok(())
+}
+
+fn delete_temp_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
+    std::fs::remove_file(path)
+}
+
+fn get_current_dir() -> PathBuf {
+    env::current_dir().unwrap()
+}
+
+
+
 /// Función para ejecutar el script de Python y capturar su salida o error
 fn execute_python_script(option: &str, name: &str) -> Result<Value, String> {
+
+    // Obtener el directorio actual del ejecutable
+    let current_dir = get_current_dir();
+    println!("Directorio actual: {:?}", current_dir);
+
+    // Crear la ruta completa del script
+    let script_path: PathBuf = current_dir.join("scripts").join("json_management.py");
+    println!("Ejecutando el script de Python en la ruta: {:?}", script_path);
+
+
+    println!("Ejecutando el script de Python en la ruta: {:?}", script_path);
+
+    // Verificar si el archivo existe
+    if !script_path.exists() {
+        println!("El script no existe en la ruta: {:?}", script_path);
+        return Err("El script de Python no existe".to_string());
+    }
+
     let output: Output = Command::new("python3")
-        .arg("scripts/json_management.py") //Path al script de Python
+        .arg(script_path) //Path al script de Python
         .arg("--option")
         .arg(option)
         .arg("--name")
@@ -83,10 +109,28 @@ fn handle_get() -> (&'static str, String) {
 /// Maneja la operación POST para crear una nueva escudería
 fn handle_post(body: &str) -> (&'static str, String) {
     let option = "1"; // Opción para POST
-    match execute_python_script(option, body) {
+    let json_request: Value = serde_json::from_str(body).unwrap();
+    let current_dir = get_current_dir();
+    let file_path = current_dir.join("tmp").join("new_escuderia.json");
+    
+    // Escribir en el archivo temporal
+    write_to_temp_file(&file_path, json_request.to_string()).unwrap();
+
+    // Ejecutar el script de Python
+    let result = execute_python_script(option, "new_escuderia.json");
+    
+    // Eliminar el archivo temporal
+    if let Err(err) = delete_temp_file(&file_path) {
+        eprintln!("Error al eliminar el archivo temporal: {}", err);
+    }
+
+    // Retornar la respuesta según el resultado
+    match result {
         Ok(response) => ("HTTP/1.1 201 CREATED", response.to_string()),
         Err(error_message) => ("HTTP/1.1 500 INTERNAL SERVER ERROR", error_message),
     }
+    
+    
 }
 
 /// Maneja la operación PUT para actualizar una escudería existente
@@ -296,6 +340,7 @@ fn main() {
     // Cargar el JSON desde el archivo
     // let datos = load_json("./f1_data.json").expect("Failed to load JSON data");
     // let datos = Arc::new(Mutex::new(datos)); // Compartir datos de manera segura entre hilos
+    
 
     let pool = ThreadPool::new(20);
     let listener = TcpListener::bind("127.0.0.1:7000").unwrap();

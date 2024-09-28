@@ -1,4 +1,4 @@
-""""
+"""
 Developed by: 	Joctan Porras Esquivel
 Date:			09-27-2024
 Description:	This script is used to manage JSON files in a custom http server.
@@ -54,7 +54,7 @@ def main():
     parser.add_argument('--name', type=str, help="Name of body JSON file\nUsually located in /tmp")
     args = parser.parse_args()
 
-    if args.option in [1, 2, 3, 4] and args.path is None:
+    if args.option in [1, 2, 3, 4] and args.name is None:
         print_json({"error": "Path is required for POST, PUT, DELETE and PATCH options"})
         sys.exit(1)
 
@@ -74,10 +74,11 @@ def main():
     # Control data
     response = {}
     request = {}
-    name = pl(CURRENT_FILE_PATH.parent/ 'tmp' / name)
-    if not name.is_file():
-        print_json({"error": "File not found"})
-        sys.exit(1)
+    if name != "" and option != 0:
+        name = pl(CURRENT_FILE_PATH.parent/ 'tmp' / name)
+        if not name.is_file():
+            print_json({"error": "File not found"})
+            sys.exit(1)
 
     f1_data = load_json_file(F1_DATA_PATH)
 
