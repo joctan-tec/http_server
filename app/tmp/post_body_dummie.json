@@ -15,21 +15,3 @@
       ]
     }
 }
-
-{
-  "body": {
-      "name": string,
-      "drivers": [
-        {
-          "name": string,
-          "age": number,
-          "nationality": string
-        },
-        {
-          "name": string,
-          "age": number,
-          "nationality": string
-        }
-      ]
-    }
-}
