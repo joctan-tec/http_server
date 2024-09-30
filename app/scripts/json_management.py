@@ -47,6 +47,9 @@ def write_json_file(file_path, data):
         sys.exit(1)
 
 
+
+
+
 def main():
     # Parse arguments
     parser = argparse.ArgumentParser()
@@ -68,7 +71,7 @@ def main():
 
     # CONSTANTS
     CURRENT_FILE_PATH = pl(__file__).resolve().parent
-    F1_DATA_PATH = pl(CURRENT_FILE_PATH.parent)
+    F1_DATA_PATH = pl(CURRENT_FILE_PATH.parent) / "data" 
     F1_DATA_PATH = F1_DATA_PATH / "f1_data.json"
 
     # Control data

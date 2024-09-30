@@ -164,6 +164,21 @@
                     "nationality": "Italian"
                 }
             ]
+        },
+        {
+            "name": "Isaac Team",
+            "drivers": [
+                {
+                    "age": 22,
+                    "name": "Charles Leclerc",
+                    "nationality": "Monacan"
+                },
+                {
+                    "age": 25,
+                    "name": "Carlos Sainz Jr.",
+                    "nationality": "Spanish"
+                }
+            ]
         }
     ]
 }
