@@ -377,7 +377,7 @@ fn main() {
     // let datos = Arc::new(Mutex::new(datos)); // Compartir datos de manera segura entre hilos
     
     let pool = ThreadPool::new(20);
-    let listener = TcpListener::bind("127.0.0.1:7000").unwrap();
+    let listener = TcpListener::bind("0.0.0.0:7000").unwrap();
 
     println!("Server listening on port 7000...");
 
