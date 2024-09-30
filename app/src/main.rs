@@ -13,6 +13,7 @@ use std::path::PathBuf;
 use std::fs::File;
 use std::io::{self, Write};
 use std::path::Path;
+use std::fs::metadata;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Piloto {
@@ -56,118 +57,124 @@ fn get_current_dir() -> PathBuf {
     env::current_dir().unwrap()
 }
 
-
-
-/// Función para ejecutar el script de Python y capturar su salida o error
 fn execute_python_script(option: &str, name: &str) -> Result<Value, String> {
-
-    // Obtener el directorio actual del ejecutable
+    // Execute the Python script, return either the script changed or an error 
+    // Get the current directory of the .py
     let current_dir = get_current_dir();
-    println!("Directorio actual: {:?}", current_dir);
+    println!("Current directory: {:?}", current_dir);
 
-    // Crear la ruta completa del script
+    // Get the full path of the .py
     let script_path: PathBuf = current_dir.join("scripts").join("json_management.py");
-    println!("Ejecutando el script de Python en la ruta: {:?}", script_path);
+    println!("Executing python script in path: {:?}", script_path);
 
-
-    println!("Ejecutando el script de Python en la ruta: {:?}", script_path);
-
-    // Verificar si el archivo existe
-    if !script_path.exists() {
-        println!("El script no existe en la ruta: {:?}", script_path);
-        return Err("El script de Python no existe".to_string());
+    // Check if the .py exists 
+    if !metadata(&script_path).is_ok() { //Using metadata instead of path in case the file exists but it's corrupt 
+        let error_message = format!("Python script not found in path: {:?}", script_path);
+        println!("{}", error_message);
+        return Err(error_message);
     }
 
-    let output: Output = Command::new("python3")
-        .arg(script_path) //Path al script de Python
+    // Execute the python script 
+    // Command: Use Python3 to execute python script (path) with an option (the method PUT/GET...) and name (json)
+    let output: Output = Command::new("python3") 
+        .arg(&script_path)
         .arg("--option")
         .arg(option)
         .arg("--name")
         .arg(name)
         .output()
-        .expect("Failed to execute Python script");
+        .map_err(|e| format!("Error executing python script: {}", e))?;
 
+    // Check the output: Print execution errors
     if output.status.success() {
+        // Check if there was an error reading the JSON
         let stdout = String::from_utf8_lossy(&output.stdout);
-        serde_json::from_str(&stdout).map_err(|e| e.to_string())
+        serde_json::from_str(&stdout).map_err(|e| format!("Error al parsear JSON: {}", e))
     } else {
+        // If not it was an error executing the script
         let stderr = String::from_utf8_lossy(&output.stderr);
-        Err(stderr.to_string())
+        Err(format!("Error en la ejecución del script: {}", stderr))
     }
 }
 
-/// Maneja la operación GET para devolver los datos completos del JSON
 fn handle_get() -> (&'static str, String) {
-    let option = "0"; // Opción para GET
-    let dummy_name = ""; // No se necesita el nombre del archivo para GET
-
-    match execute_python_script(option, dummy_name) {
+    // Get returns all data from the server: teams, drivers and driver's data
+    // Doesn't receive anything
+    // Executes the python script that fetches the JSON 
+    // Prints the error found 
+    match execute_python_script("0", "") { 
         Ok(response) => ("HTTP/1.1 200 OK", response.to_string()),
-        Err(error_message) => ("HTTP/1.1 500 INTERNAL SERVER ERROR", error_message),
+        Err(error_message) => {
+            eprintln!("Error al ejecutar el script: {}", error_message);
+            ("HTTP/1.1 500 INTERNAL SERVER ERROR", error_message)
+        },
     }
 }
 
-/// Maneja la operación POST para crear una nueva escudería
 fn handle_post(body: &str) -> (&'static str, String) {
-    let json_request: Value = serde_json::from_str(body).unwrap();
+    // Method to write a team into JSON
+    // Intentar parsear el cuerpo de la solicitud a JSON
+    let json_request: Value = match serde_json::from_str(body) {
+        Ok(json) => json,
+        Err(_) => return ("HTTP/1.1 400 BAD REQUEST", r#"{"error": "Invalid JSON body"}"#.to_string()),
+    };
+
     let current_dir = get_current_dir();
     let file_path = current_dir.join("tmp").join("new_escuderia.json");
-    
+
     // Escribir en el archivo temporal
-    write_to_temp_file(&file_path, json_request.to_string()).unwrap();
+    if let Err(e) = write_to_temp_file(&file_path, json_request.to_string()) {
+        eprintln!("Error al escribir en el archivo temporal: {}", e);
+        return ("HTTP/1.1 500 INTERNAL SERVER ERROR", r#"{"error": "Failed to write temp file"}"#.to_string());
+    }
 
     // Ejecutar el script de Python
     let result = execute_python_script("1", "new_escuderia.json");
-    
+
     // Eliminar el archivo temporal
     if let Err(err) = delete_temp_file(&file_path) {
         eprintln!("Error al eliminar el archivo temporal: {}", err);
     }
 
-    // Retornar la respuesta según el resultado
     match result {
         Ok(response) => ("HTTP/1.1 201 CREATED", response.to_string()),
-        Err(error_message) => ("HTTP/1.1 500 INTERNAL SERVER ERROR", error_message),
+        Err(error_message) => {
+            eprintln!("Error al ejecutar el script: {}", error_message);
+            ("HTTP/1.1 500 INTERNAL SERVER ERROR", error_message)
+        },
     }
 }
 
-/// Maneja la operación PUT para actualizar una escudería existente
 fn handle_put(path: &str, body: &str) -> (&'static str, String) {
     let parts: Vec<&str> = path.split("/").collect();
     if parts.len() < 4 {
-        let error_response = r#"{"error": "Invalid path"}"#;
-        return ("HTTP/1.1 400 BAD REQUEST", error_response.to_string());
+        return ("HTTP/1.1 400 BAD REQUEST", r#"{"error": "Invalid path"}"#.to_string());
     }
 
-    // Obtener el nombre del equipo (última parte del path)
     let team_name = parts[3];
 
-    // Convertir el cuerpo de la petición (body) a un objeto JSON
+    // Intentar parsear el cuerpo de la solicitud a JSON
     let body_json: Value = match serde_json::from_str(body) {
         Ok(json) => json,
-        Err(_) => {
-            let error_response = r#"{"error": "Invalid JSON body"}"#;
-            return ("HTTP/1.1 400 BAD REQUEST", error_response.to_string());
-        }
+        Err(_) => return ("HTTP/1.1 400 BAD REQUEST", r#"{"error": "Invalid JSON body"}"#.to_string()),
     };
 
-    // Crear el JSON final que necesitamos
+    // Crear el JSON final
     let json_request = json!({
         "body": body_json,
         "team": team_name
     });
 
-    // Obtener el directorio actual y construir la ruta al archivo temporal
     let current_dir = get_current_dir();
     let file_path = current_dir.join("tmp").join("updated_escuderia.json");
 
-    // Escribir el JSON en el archivo temporal
+    // Escribir en el archivo temporal
     if let Err(e) = fs::write(&file_path, json_request.to_string()) {
         eprintln!("Error al escribir en el archivo temporal: {}", e);
         return ("HTTP/1.1 500 INTERNAL SERVER ERROR", r#"{"error": "Failed to write temp file"}"#.to_string());
     }
 
-    // Ejecutar el script de Python con la opción "2" para PUT
+    // Ejecutar el script de Python
     let result = execute_python_script("2", "updated_escuderia.json");
 
     // Eliminar el archivo temporal
@@ -175,22 +182,22 @@ fn handle_put(path: &str, body: &str) -> (&'static str, String) {
         eprintln!("Error al eliminar el archivo temporal: {}", err);
     }
 
-    // Retornar la respuesta según el resultado
     match result {
         Ok(response) => ("HTTP/1.1 200 OK", response.to_string()),
-        Err(error_message) => ("HTTP/1.1 500 INTERNAL SERVER ERROR", error_message),
+        Err(error_message) => {
+            eprintln!("Error al ejecutar el script: {}", error_message);
+            ("HTTP/1.1 500 INTERNAL SERVER ERROR", error_message)
+        },
     }
 }
 
-/// Maneja la operación DELETE para eliminar una escudería existente
+
 fn handle_delete(path: &str) -> (&'static str, String) {
     let parts: Vec<&str> = path.split("/").collect();
     if parts.len() < 4 {
-        let error_response = r#"{"error": "Invalid path"}"#;
-        return ("HTTP/1.1 400 BAD REQUEST", error_response.to_string());
+        return ("HTTP/1.1 400 BAD REQUEST", r#"{"error": "Invalid path"}"#.to_string());
     }
 
-    // Obtener el nombre del equipo (última parte del path)
     let team_name = parts[3].replace("%20", " ");
 
     // Crear el JSON que contiene el nombre del equipo a eliminar
@@ -198,8 +205,7 @@ fn handle_delete(path: &str) -> (&'static str, String) {
         "team": team_name
     });
 
-    // Obtener el directorio actual y construir la ruta al archivo temporal
-    let current_dir = std::env::current_dir().unwrap();
+    let current_dir = get_current_dir();
     let file_path = current_dir.join("tmp").join("delete_escuderia.json");
 
     // Escribir el JSON en el archivo temporal
@@ -208,61 +214,56 @@ fn handle_delete(path: &str) -> (&'static str, String) {
         return ("HTTP/1.1 500 INTERNAL SERVER ERROR", r#"{"error": "Failed to write temp file"}"#.to_string());
     }
 
-    // Ejecutar el script de Python con la opción "3" para DELETE
+    // Ejecutar el script de Python
     let result = execute_python_script("3", "delete_escuderia.json");
 
     // Eliminar el archivo temporal
     if let Err(err) = fs::remove_file(&file_path) {
         eprintln!("Error al eliminar el archivo temporal: {}", err);
     }
-
-    // Retornar la respuesta según el resultado
+    
     match result {
         Ok(response) => ("HTTP/1.1 200 OK", response.to_string()),
-        Err(error_message) => ("HTTP/1.1 500 INTERNAL SERVER ERROR", error_message),
+        Err(error_message) => {
+            eprintln!("Error al ejecutar el script: {}", error_message);
+            ("HTTP/1.1 500 INTERNAL SERVER ERROR", error_message)
+        },
     }
 }
 
-/// Maneja la operación PATCH para actualizar un piloto específico
+
 fn handle_patch(path: &str, body: &str) -> (&'static str, String) {
-    // Dividir el path para obtener los componentes
     let parts: Vec<&str> = path.split("/").collect();
     if parts.len() < 6 {
-        let error_response = r#"{"error": "Invalid path"}"#;
-        return ("HTTP/1.1 400 BAD REQUEST", error_response.to_string());
+        return ("HTTP/1.1 400 BAD REQUEST", r#"{"error": "Invalid path"}"#.to_string());
     }
 
-    // Extraer el nombre del equipo y del piloto del path
     let team_name = parts[3].replace("%20", " ");
     let pilot_name = parts[5].replace("%20", " ");
 
-    // Convertir el cuerpo de la petición (body) a un objeto JSON
+    // Intentar parsear el cuerpo de la solicitud a JSON
     let body_json: Value = match serde_json::from_str(body) {
         Ok(json) => json,
-        Err(_) => {
-            let error_response = r#"{"error": "Invalid JSON body"}"#;
-            return ("HTTP/1.1 400 BAD REQUEST", error_response.to_string());
-        }
+        Err(_) => return ("HTTP/1.1 400 BAD REQUEST", r#"{"error": "Invalid JSON body"}"#.to_string()),
     };
 
-    // Crear el JSON final que necesitamos para actualizar el piloto
+    // Crear el JSON final
     let json_request = json!({
         "body": body_json,
         "team": team_name,
         "driver": pilot_name
     });
 
-    // Obtener el directorio actual y construir la ruta al archivo temporal
-    let current_dir = std::env::current_dir().unwrap();
+    let current_dir = get_current_dir();
     let file_path = current_dir.join("tmp").join("updated_piloto.json");
 
-    // Escribir el JSON en el archivo temporal
+    // Escribir en el archivo temporal
     if let Err(e) = fs::write(&file_path, json_request.to_string()) {
         eprintln!("Error al escribir en el archivo temporal: {}", e);
         return ("HTTP/1.1 500 INTERNAL SERVER ERROR", r#"{"error": "Failed to write temp file"}"#.to_string());
     }
 
-    // Ejecutar el script de Python con la opción "4" para PATCH
+    // Ejecutar el script de Python
     let result = execute_python_script("4", "updated_piloto.json");
 
     // Eliminar el archivo temporal
@@ -270,12 +271,16 @@ fn handle_patch(path: &str, body: &str) -> (&'static str, String) {
         eprintln!("Error al eliminar el archivo temporal: {}", err);
     }
 
-    // Retornar la respuesta según el resultado
     match result {
         Ok(response) => ("HTTP/1.1 200 OK", response.to_string()),
-        Err(error_message) => ("HTTP/1.1 500 INTERNAL SERVER ERROR", error_message),
+        Err(error_message) => {
+            eprintln!("Error al ejecutar el script: {}", error_message);
+            ("HTTP/1.1 500 INTERNAL SERVER ERROR", error_message)
+        },
     }
 }
+
+
 
 /// Maneja la conexión entrante y dirige la solicitud al método correspondiente
 fn handle_connection(mut stream: TcpStream) {

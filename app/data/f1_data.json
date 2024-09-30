@@ -6,12 +6,12 @@
                 {
                     "name": "Max Verstappen",
                     "age": 25,
-                    "nacionality": "Holandesa"
+                    "nacionality": "Dutch"
                 },
                 {
-                    "name": "Sergio P\u00e9rez",
+                    "name": "Sergio Perez",
                     "age": 33,
-                    "nacionality": "Mexicana"
+                    "nacionality": "Mexican"
                 }
             ]
         },
@@ -24,9 +24,9 @@
                     "nationality": "Monacan"
                 },
                 {
-                    "age": 25,
-                    "name": "Carlos Sainz Jr.",
-                    "nationality": "Spanish"
+                    "age": 38,
+                    "name": "Lewis Hamilton",
+                    "nationality": "British"
                 }
             ]
         },
@@ -36,12 +36,12 @@
                 {
                     "name": "Lewis Hamilton",
                     "age": 38,
-                    "nacionality": "Brit\u00e1nica"
+                    "nacionality": "British"
                 },
                 {
                     "name": "George Russell",
                     "age": 25,
-                    "nacionality": "Brit\u00e1nica"
+                    "nacionality": "British"
                 }
             ]
         },
@@ -51,12 +51,12 @@
                 {
                     "name": "Esteban Ocon",
                     "age": 26,
-                    "nacionality": "Francesa"
+                    "nacionality": "French"
                 },
                 {
                     "name": "Pierre Gasly",
                     "age": 27,
-                    "nacionality": "Francesa"
+                    "nacionality": "French"
                 }
             ]
         },
@@ -66,12 +66,12 @@
                 {
                     "name": "Lando Norris",
                     "age": 23,
-                    "nacionality": "Brit\u00e1nica"
+                    "nacionality": "British"
                 },
                 {
                     "name": "Oscar Piastri",
                     "age": 22,
-                    "nacionality": "Australiana"
+                    "nacionality": "Australian"
                 }
             ]
         },
@@ -81,12 +81,12 @@
                 {
                     "name": "Valtteri Bottas",
                     "age": 34,
-                    "nacionality": "Finlandesa"
+                    "nacionality": "Finish"
                 },
                 {
                     "name": "Zhou Guanyu",
                     "age": 24,
-                    "nacionality": "China"
+                    "nacionality": "Chinese"
                 }
             ]
         },
@@ -96,12 +96,12 @@
                 {
                     "name": "Fernando Alonso",
                     "age": 41,
-                    "nacionality": "Espa\u00f1ola"
+                    "nacionality": "Spanish"
                 },
                 {
                     "name": "Lance Stroll",
                     "age": 24,
-                    "nacionality": "Canadiense"
+                    "nacionality": "Canadian"
                 }
             ]
         },
@@ -111,12 +111,12 @@
                 {
                     "name": "Yuki Tsunoda",
                     "age": 23,
-                    "nacionality": "Japonesa"
+                    "nacionality": "Japanese"
                 },
                 {
                     "name": "Nyck de Vries",
                     "age": 28,
-                    "nacionality": "Holandesa"
+                    "nacionality": "Dutch"
                 }
             ]
         },
@@ -126,12 +126,12 @@
                 {
                     "name": "Nico Hulkenberg",
                     "age": 35,
-                    "nacionality": "Alemana"
+                    "nacionality": "German"
                 },
                 {
                     "name": "Kevin Magnussen",
                     "age": 30,
-                    "nacionality": "Danesa"
+                    "nacionality": "Danes"
                 }
             ]
         },
@@ -141,12 +141,12 @@
                 {
                     "name": "Alex Albon",
                     "age": 27,
-                    "nacionality": "Tailandesa"
+                    "nacionality": "Thai"
                 },
                 {
                     "name": "Logan Sargeant",
                     "age": 22,
-                    "nacionality": "Estadounidense"
+                    "nacionality": "American"
                 }
             ]
         },
@@ -155,7 +155,7 @@
             "drivers": [
                 {
                     "age": 42,
-                    "name": "Kimi R\u00e4ikk\u00f6nen",
+                    "name": "Kimi Raikkonen",
                     "nationality": "Finnish"
                 },
                 {
@@ -166,17 +166,17 @@
             ]
         },
         {
-            "name": "Isaac Team",
+            "name": "Hola Team",
             "drivers": [
                 {
-                    "age": 22,
-                    "name": "Charles Leclerc",
-                    "nationality": "Monacan"
+                    "age": 42,
+                    "name": "San Chequito",
+                    "nationality": "Finnish"
                 },
                 {
-                    "age": 25,
-                    "name": "Carlos Sainz Jr.",
-                    "nationality": "Spanish"
+                    "age": 29,
+                    "name": "Joctan",
+                    "nationality": "Italian"
                 }
             ]
         }
