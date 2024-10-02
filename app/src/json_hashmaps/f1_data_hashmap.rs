@@ -1,54 +1,15 @@
 use std::collections::HashMap;
+use std::fs;
+use serde_json::Value;
+use std::error::Error;
+use crate::utils::get_current_dir;
 
-pub fn holamundo() -> String {
-    "Hola Mundo".to_string()
+
+
+pub fn get_f1_data() -> Result<HashMap<String, Value>, Box<dyn Error>> {
+    let current_dir = get_current_dir();
+    let f1_data_path = current_dir.join("data/f1_data.json");
+    let f1_data = fs::read_to_string(f1_data_path)?;
+    let f1_data: HashMap<String, Value> = serde_json::from_str(&f1_data)?;
+    Ok(f1_data)
 }
-
-pub fn load_data_from_json () -> HashMap<String, String> {
-    let mut data = HashMap::new();
-    data.insert("key".to_string(), "value".to_string());
-    data
-}
-
-pub fn get_data_from_json (key: &str) -> String {
-    let data = load_data_from_json();
-    match data.get(key) {
-        Some(value) => value.to_string(),
-        None => "No data found".to_string()
-    }
-}
-
-pub fn get_all_data_from_json () -> HashMap<String, String> {
-    load_data_from_json()
-}
-
-pub fn add_data_to_json (key: &str, value: &str) -> String {
-    let mut data = load_data_from_json();
-    data.insert(key.to_string(), value.to_string());
-    "Data added".to_string()
-}
-
-pub fn update_data_from_json (key: &str, value: &str) -> String {
-    let mut data = load_data_from_json();
-    match data.get(key) {
-        Some(_) => {
-            data.insert(key.to_string(), value.to_string());
-            "Data updated".to_string()
-        },
-        None => "No data found".to_string()
-    }
-}
-
-pub fn delete_data_from_json (key: &str) -> String {
-    let mut data = load_data_from_json();
-    match data.get(key) {
-        Some(_) => {
-            data.remove(key);
-            "Data deleted".to_string()
-        },
-        None => "No data found".to_string()
-    }
-}
-
-
-

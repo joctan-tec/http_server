@@ -1,5 +1,5 @@
 
-use std::fs;
+use std::{fs, path};
 use std::io::{prelude::*, BufReader};
 use std::net::{TcpListener, TcpStream};
 use serde::{Deserialize, Serialize};
@@ -15,9 +15,16 @@ use std::path::Path;
 use std::fs::metadata;
 
 mod json_hashmaps;
-use json_hashmaps::f1_data_hashmap::{
-    holamundo,
+use json_hashmaps::f1_data_hashmap::get_f1_data;
+mod utils;
+use utils::{
+    get_current_dir,
+    print_hashmap,
+    clean_string
+
 };
+
+
 
 
 
@@ -60,9 +67,7 @@ pub fn delete_temp_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
     std::fs::remove_file(path)
 }
 
-pub fn get_current_dir() -> PathBuf {
-    env::current_dir().unwrap()
-}
+
 
 pub fn execute_python_script(option: &str, name: &str) -> Result<Value, String> {
     // Execute the Python script, return either the script changed or an error 
@@ -384,7 +389,7 @@ pub fn main() {
     // let datos = load_json("./f1_data.json").expect("Failed to load JSON data");
     // let datos = Arc::new(Mutex::new(datos)); // Compartir datos de manera segura entre hilos
     
-    let pool = ThreadPool::new(20);
+/*     let pool = ThreadPool::new(20);
     let listener = TcpListener::bind("0.0.0.0:7000").unwrap();
 
     println!("Server listening on port 7000...");
@@ -395,5 +400,12 @@ pub fn main() {
         pool.execute(move || {
             handle_connection(stream);
         });
-    }
+    } */
+
+    let data = get_f1_data().unwrap();
+    let team = data.get("teams").unwrap();
+    let name = team.get(0).unwrap().get("name").unwrap().to_string();
+
+    
+   
 }
