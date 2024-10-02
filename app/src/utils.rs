@@ -19,3 +19,4 @@ pub fn clean_string(string: String) -> String {
     cleaned_string = cleaned_string.replace("\\", "");
     cleaned_string
 }
+
