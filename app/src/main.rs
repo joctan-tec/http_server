@@ -14,6 +14,14 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::fs::metadata;
 
+mod json_hashmaps;
+use json_hashmaps::f1_data_hashmap::{
+    holamundo,
+};
+
+
+
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Piloto {
     nombre: String,
@@ -34,7 +42,7 @@ struct Datos {
 
 
 /// Analiza la línea de solicitud HTTP y devuelve el método y la ruta
-fn parse_request_line(request_line: &str) -> (&str, String) {
+pub fn parse_request_line(request_line: &str) -> (&str, String) {
     let parts: Vec<&str> = request_line.split_whitespace().collect();
     if parts.len() < 2 {
         return ("", "".to_string());
@@ -42,21 +50,21 @@ fn parse_request_line(request_line: &str) -> (&str, String) {
     (parts[0], parts[1].to_string())
 }
 
-fn write_to_temp_file<P: AsRef<Path>>(path: P, content: String) -> io::Result<()> {
+pub fn write_to_temp_file<P: AsRef<Path>>(path: P, content: String) -> io::Result<()> {
     let mut file = File::create(path)?;
     file.write_all(content.as_bytes())?;
     Ok(())
 }
 
-fn delete_temp_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
+pub fn delete_temp_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
     std::fs::remove_file(path)
 }
 
-fn get_current_dir() -> PathBuf {
+pub fn get_current_dir() -> PathBuf {
     env::current_dir().unwrap()
 }
 
-fn execute_python_script(option: &str, name: &str) -> Result<Value, String> {
+pub fn execute_python_script(option: &str, name: &str) -> Result<Value, String> {
     // Execute the Python script, return either the script changed or an error 
     // Get the current directory of the .py
     let current_dir = get_current_dir();
@@ -96,7 +104,7 @@ fn execute_python_script(option: &str, name: &str) -> Result<Value, String> {
     }
 }
 
-fn handle_get() -> (&'static str, String) {
+pub fn handle_get() -> (&'static str, String) {
     // Get returns all data from the server: teams, drivers and driver's data
     // Doesn't receive anything
     // Executes the python script that fetches the JSON 
@@ -110,7 +118,7 @@ fn handle_get() -> (&'static str, String) {
     }
 }
 
-fn handle_post(body: &str) -> (&'static str, String) {
+pub fn handle_post(body: &str) -> (&'static str, String) {
     // Method to write a team into JSON
     // Intentar parsear el cuerpo de la solicitud a JSON
     let json_request: Value = match serde_json::from_str(body) {
@@ -144,7 +152,7 @@ fn handle_post(body: &str) -> (&'static str, String) {
     }
 }
 
-fn handle_put(path: &str, body: &str) -> (&'static str, String) {
+pub fn handle_put(path: &str, body: &str) -> (&'static str, String) {
     let parts: Vec<&str> = path.split("/").collect();
     if parts.len() < 4 {
         return ("HTTP/1.1 400 BAD REQUEST", r#"{"error": "Invalid path"}"#.to_string());
@@ -191,7 +199,7 @@ fn handle_put(path: &str, body: &str) -> (&'static str, String) {
 }
 
 
-fn handle_delete(path: &str) -> (&'static str, String) {
+pub fn handle_delete(path: &str) -> (&'static str, String) {
     let parts: Vec<&str> = path.split("/").collect();
     if parts.len() < 4 {
         return ("HTTP/1.1 400 BAD REQUEST", r#"{"error": "Invalid path"}"#.to_string());
@@ -231,7 +239,7 @@ fn handle_delete(path: &str) -> (&'static str, String) {
 }
 
 
-fn handle_patch(path: &str, body: &str) -> (&'static str, String) {
+pub fn handle_patch(path: &str, body: &str) -> (&'static str, String) {
     let parts: Vec<&str> = path.split("/").collect();
     if parts.len() < 6 {
         return ("HTTP/1.1 400 BAD REQUEST", r#"{"error": "Invalid path"}"#.to_string());
@@ -282,7 +290,7 @@ fn handle_patch(path: &str, body: &str) -> (&'static str, String) {
 
 
 /// Maneja la conexión entrante y dirige la solicitud al método correspondiente
-fn handle_connection(mut stream: TcpStream) {
+pub fn handle_connection(mut stream: TcpStream) {
     let mut buf_reader = BufReader::new(&mut stream);
     let mut request_line = String::new();
 
@@ -371,7 +379,7 @@ fn handle_connection(mut stream: TcpStream) {
     }
 }
 
-fn main() {
+pub fn main() {
     // Cargar el JSON desde el archivo
     // let datos = load_json("./f1_data.json").expect("Failed to load JSON data");
     // let datos = Arc::new(Mutex::new(datos)); // Compartir datos de manera segura entre hilos
