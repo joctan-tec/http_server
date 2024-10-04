@@ -1,8 +1,11 @@
-use crate::utils::parse_request_into_hashmap;
+use serde_json::Value;
+
+use crate::utils::{parse_request_into_hashmap, print_hashmap};
 use crate::json_hashmaps::f1_data_hashmap::get_f1_data;
 use crate::server_http::thread_pool::ThreadPool;
 use crate::server_http::routes::{Router, Handler}; 
 
+use std::collections::HashMap;
 use std::net::{TcpListener, TcpStream};
 use std::io::{BufReader, Write};
 use std::sync::{Arc, Mutex};
@@ -20,13 +23,12 @@ impl Server {
         }
     }
 
-    pub fn add_route<F>(&mut self, method: &str, path: &str, handler: F)
+    pub fn add_route<F>(&mut self,method: &str, path: &str, handler: F)
     where
-        F: Fn(&mut TcpStream, &str) + Send + 'static,
+        F: Fn(&mut TcpStream,HashMap<String, Value>) + Send + Sync + 'static,
     {
-        // Combina el método HTTP y la ruta como clave
-        let key = format!("{} {}", method, path);
-        self.router.add_route(&key, handler);
+        let pair = format!("{} {}", method, path);
+        self.router.add_route(&pair, handler);
     }
 
     pub fn start(&self, host: &str, port: u16) {
@@ -51,10 +53,10 @@ impl Server {
 
 fn handle_connection(mut stream: TcpStream, router: &Router) {
     let mut reader = BufReader::new(&stream);
+    
     let request_parts = parse_request_into_hashmap(reader);
+    
 
-    let tipo = request_parts.get("method").unwrap().as_str().unwrap();
-    let ruta = request_parts.get("path").unwrap().as_str().unwrap();
-
-    router.handle_request(&mut stream, ruta, tipo);
+    // Enviar el request parseado al router
+    router.handle_request(request_parts, &mut stream);
 }

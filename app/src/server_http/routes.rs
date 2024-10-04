@@ -1,54 +1,61 @@
-use std::sync::{Arc, Mutex};
+use core::hash;
+use std::sync::Arc;
 use std::collections::HashMap;
-use std::io::{Write, BufReader};
+use std::io::{Write};
 use std::net::TcpStream;
-use crate::utils::{parse_request_into_hashmap, clean_string, get_current_dir, print_hashmap};
 
+use serde_json::Value;
 
-pub type Handler = Box<dyn Fn(&mut TcpStream, &str) + Send + 'static>;
+use crate::utils::{print_hashmap, clean_string};
+
+pub type Handler = Arc<Box<dyn Fn(&mut TcpStream, HashMap<String, Value>) + Send + Sync>>;
 
 #[derive(Clone)]
 pub struct Router {
-    routes: Arc<Mutex<HashMap<String, Handler>>>,
+    routes: HashMap<String, Handler>, // No es necesario bloquear aquí
 }
 
 impl Router {
     pub fn new() -> Self {
         Router {
-            routes: Arc::new(Mutex::new(HashMap::new())),
+            routes: HashMap::new(),
         }
     }
 
     pub fn list_routes(&self) {
-        let routes = self.routes.lock().unwrap(); // Acceder al HashMap con un lock
-
         println!("Rutas registradas:");
-        for route in routes.keys() {
+        for route in self.routes.keys() {
             println!("{}", route);
         }
     }
 
     pub fn add_route<F>(&mut self, path: &str, handler: F)
     where
-        F: Fn(&mut TcpStream, &str) + Send + 'static,
+        F: Fn(&mut TcpStream,HashMap<String, Value>) + Send + Sync + 'static,
     {
-        self.routes
-            .lock()
-            .unwrap()
-            .insert(path.to_string(), Box::new(handler));
-    } 
-    
-
-
-    pub fn handle_request(&self, stream: &mut TcpStream, path: &str, method: &str) {
-        // Crear la clave combinada de método y ruta
-        let key = format!("{} {}", method, path);
-    
-        // Verificar si la ruta con el método existe
-        if let Some(handler) = self.routes.lock().unwrap().get(&key) {
-            handler(stream, path); // Ejecutar el handler correspondiente
-        } else {
-            let _ = writeln!(stream, "HTTP/1.1 404 NOT FOUND\r\n\r\n");
-        }
+        println!("Agregando ruta: {}", path);
+        self.routes.insert(path.to_string(), Arc::new(Box::new(handler)));
     }
+
+    pub fn handle_request(&self, request: HashMap<String, Value>, stream: &mut TcpStream) {
+        let path = request.get("path").unwrap();
+        let method = request.get("method").unwrap();
+        let key = clean_string(format!("{} {}", method, path));
+        
+
+        
+
+        match self.routes.get(key.as_str()) {
+            Some(handler) => {
+                handler(stream, request);
+            }
+            None => {
+                let response = format!("HTTP/1.1 404 NOT FOUND\r\n\r\n");
+                println!("Ruta no encontrada");
+                stream.write(response.as_bytes()).unwrap();
+            }
+        }
+
+    }
+        
 }

@@ -11,12 +11,16 @@ pub fn get_current_dir() -> Result<PathBuf, std::io::Error> {
     env::current_dir()
 }
 
-// Imprimir un HashMap en formato JSON legible
-pub fn print_hashmap(hashmap: &HashMap<String, String>) {
+pub fn print_hashmap(hashmap: &HashMap<String, Value>) {
+
     match serde_json::to_string_pretty(hashmap) {
+
         Ok(pretty_json) => println!("{}", pretty_json),
+
         Err(e) => eprintln!("Error serializing HashMap to JSON: {}", e),
+
     }
+
 }
 
 // Función para limpiar las cadenas de caracteres especiales
