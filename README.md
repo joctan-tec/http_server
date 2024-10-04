@@ -1,8 +1,24 @@
 # 🖥️ HTTP Server en Rust
+Este proyecto se centra en la creación de un servidor HTTP v1.x simple pero robusto utilizando **Rust**. El servidor implementa operaciones HTTP como **GET**, **PUT**, **POST**, **DELETE** y **UPDATE**, y está diseñado para manejar múltiples conexiones simultáneamente utilizando **hilos (threads)**. Adicionalmente, se incluye un sistema de gestión de **cookies** para mantener el estado de sesión del usuario.
 
-Desarrollo de un servidor HTTP v1.x desde cero en **Rust**, soportando operaciones **GET**, **PUT**, **POST**, **DELETE** y **UPDATE**. Implementa manejo de múltiples solicitudes mediante **hilos (threads)** y gestiona **cookies** para administración de sesiones.
+## 📑 Índice
+1. [Comandos para correr el servidor](##-comandos-para-correr-el-servidor)
+2. [Endpoints](##-endpoints)
+3. [Descripción del Proyecto](#-descripción-del-proyecto)
+4. [Objetivos del Proyecto](#-objetivos-del-proyecto)
+5. [Requisitos Técnicos](#-requisitos-técnicos)
+6. [Documentación](#-documentación)
+   - [Diseño del servidor](#2-diseño-del-servidor)
+   - [Implementación de la concurrencia](#3-implementación-de-la-concurrencia)
+   - [Manejo de cookies](#4-manejo-de-cookies)
+   - [Instrucciones para ejecutar y probar el servidor](#5-instrucciones-para-ejecutar-y-probar-el-servidor)
+   - [Estructura del proyecto](#6-estructura-del-proyecto)
+   - [Análisis de resultados](#7-análisis-de-resultados)
+7. [Tecnologías utilizadas](#-tecnologías-utilizadas)
+8. [Enlaces de interés](#-enlaces-de-interés)
 
-## 🚀 Comandos para correr el servidor
+
+## 🚀 Comandos para correr el servidor 🚧🚧🚧
 
 ```bash
 # Clona el repositorio
@@ -15,7 +31,7 @@ cd http_server/src/
 cargo run
 ```
 
-## 📌 Endpoints
+## 📌 Endpoints 🚧🚧🚧
 
 ### Obtener información sobre escuderías
 - **Método**: `GET`
@@ -59,20 +75,35 @@ Este proyecto implementa un servidor HTTP v1.x funcional desde cero utilizando *
 
 ## 📚 Documentación
 
-La documentación del proyecto incluye:
 
-- **Introducción**: Descripción general del servidor y sus funcionalidades.
-- **Diseño del servidor**: Explicación de la arquitectura, cómo se gestionan las conexiones concurrentes y cómo se implementan las operaciones HTTP.
-- **Concurrencia**: Explicación detallada de cómo se manejan los hilos y las técnicas utilizadas para evitar bloqueos y condiciones de carrera.
-- **Manejo de cookies**: Descripción de cómo se gestionan las cookies (creación, almacenamiento y eliminación).
-- **Pruebas del servidor**: Instrucciones detalladas sobre cómo ejecutar y probar el servidor utilizando **Postman**.
-- **Estructura del proyecto**: Explicación de la estructura de carpetas y archivos.
-- **Análisis de resultados**: Un resumen del cumplimiento de los objetivos del proyecto.
+### 1. Diseño del servidor 🚧🚧🚧
+El servidor se basa en una arquitectura concurrente, donde cada conexión entrante es manejada por un hilo independiente. Se utiliza un pool de hilos (thread pool) para reutilizar recursos y mejorar la eficiencia del servidor. Además, el servidor puede gestionar tanto solicitudes JSON como en texto plano. Las operaciones HTTP están bien definidas dentro de las funciones que corresponden a cada método, y los datos se gestionan mediante un sistema sencillo de almacenamiento.
 
----
+### 2. Implementación de la concurrencia 🚧🚧🚧
+Para la concurrencia, el servidor utiliza un **modelo multihilo (threading)**. Cada solicitud de cliente es procesada por un hilo del pool de hilos. Se ha implementado un mecanismo de **sincronización** que garantiza que los recursos compartidos no sufran bloqueos ni condiciones de carrera. Se utilizan primitivos de sincronización como **Mutex** y **Arc** para proteger el acceso concurrente a los datos.
 
-## 📁 Estructura del Proyecto
+### 3. Manejo de cookies 🚧🚧🚧
+Las **cookies** se utilizan para mantener el estado de sesión de los usuarios entre solicitudes. Cada vez que un usuario realiza una operación, se genera o valida una cookie asociada a su sesión. Las cookies contienen un identificador único que es almacenado y validado en el servidor, permitiendo gestionar el estado de forma sencilla y segura.
 
+### 4. Instrucciones para ejecutar y probar el servidor 🚧🚧🚧
+Para probar el servidor, puedes utilizar la herramienta **Postman**. A continuación, se detallan algunos comandos para verificar el funcionamiento de los endpoints:
+- Para obtener la lista de escuderías:
+  ```http
+  GET http://127.0.0.1:7000/api/escuderias
+  ```
+- Para crear una nueva escudería:
+  ```http
+  POST http://127.0.0.1:7000/api/escuderias
+  Content-Type: application/json
+  Body: {
+    "nombre": "Nueva Escudería",
+    "conductor": "Juan Pérez",
+    "edad": 30,
+    "pais": "México"
+  }
+  ```
+
+### 6. Estructura del proyecto 🚧🚧🚧
 ```bash
 http_server/
 │
@@ -82,10 +113,7 @@ http_server/
 └── README.md            # Este archivo
 ```
 
----
-
-## 📊 Análisis de Resultados
-
+### 7. Análisis de resultados
 A continuación, se presenta un análisis del cumplimiento de los objetivos establecidos:
 
 | Objetivo                | Estado  | Descripción breve                                |
@@ -96,6 +124,7 @@ A continuación, se presenta un análisis del cumplimiento de los objetivos esta
 | Pruebas con Postman      | ✅       | Todas las funcionalidades fueron probadas con Postman. |
 
 > **Completitud**: 100%
+
 ---
 
 ## 🛠️ Tecnologías utilizadas
