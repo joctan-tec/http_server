@@ -38,24 +38,53 @@ impl Router {
     }
 
     pub fn handle_request(&self, request: HashMap<String, Value>, stream: &mut TcpStream) {
-        let path = request.get("path").unwrap();
-        let method = request.get("method").unwrap();
+        let path = request.get("path").unwrap().as_str().unwrap();
+        let method = request.get("method").unwrap().as_str().unwrap();
         let key = clean_string(format!("{} {}", method, path));
-        
-
-        
-
-        match self.routes.get(key.as_str()) {
-            Some(handler) => {
-                handler(stream, request);
+    
+        if let Some(handler) = self.routes.get(key.as_str()) {
+            handler(stream, request);
+        } else {
+            // Verificar rutas con parámetros
+            for (route_key, handler) in &self.routes {
+                if let Some(captures) = self.match_route(route_key, &key) {
+                    let mut request_with_params = request.clone();
+                    
+                    // Convert HashMap to serde_json::Map
+                    let params_map: serde_json::Map<String, Value> = captures.into_iter().collect();
+                    
+                    request_with_params.insert("params".to_string(), Value::Object(params_map));
+                    handler(stream, request_with_params);
+                    return;
+                }
             }
-            None => {
-                let response = format!("HTTP/1.1 404 NOT FOUND\r\n\r\n");
-                println!("Ruta no encontrada");
-                stream.write(response.as_bytes()).unwrap();
+    
+            let response = format!("HTTP/1.1 404 NOT FOUND\r\n\r\n");
+            println!("Ruta no encontrada");
+            stream.write(response.as_bytes()).unwrap();
+        }
+    }
+    
+    
+    pub fn match_route(&self, route_key: &str, path: &str) -> Option<HashMap<String, Value>> {        let route_parts: Vec<&str> = route_key.split('/').collect();
+        let path_parts: Vec<&str> = path.split('/').collect();
+    
+        if route_parts.len() != path_parts.len() {
+            return None;
+        }
+    
+        let mut params = HashMap::new();
+    
+        for (route_part, path_part) in route_parts.iter().zip(path_parts.iter()) {
+            if route_part.starts_with(':') {
+                // Capture the parameter
+                let param_name = &route_part[1..]; // remove ':'
+                params.insert(param_name.to_string(), Value::String(path_part.to_string()));
+            } else if *route_part != *path_part {
+                return None; // No match
             }
         }
-
+    
+        Some(params)
     }
-        
 }

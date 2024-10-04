@@ -34,7 +34,7 @@ pub fn put_team(
     new_team: Value,
     mut f1_data: HashMap<String, Value>,
 ) -> Result<(), Box<dyn Error>> {
-    let teams = f1_data.get_mut("teams").unwrap().as_array_mut().unwrap();
+    let teams: &mut Vec<Value> = f1_data.get_mut("teams").unwrap().as_array_mut().unwrap();
 
     // Verificar si el equipo existe
     if let Some(pos) = teams
@@ -110,15 +110,13 @@ fn main() {
 
     let mut server = Server::new(20); // Pool de 20 hilos
 
-    // Ruta para obtener escuderías (lectura concurrente permitida)
+    // Ruta para obtener escuderías
     let data_shared_clone = Arc::clone(&data_shared);
     server.add_route(
         "GET",
-        "/escuderias",
-        move |stream: &mut TcpStream, request: HashMap<String, Value>| {
+        "/api/escuderias",
+        move |stream: &mut TcpStream, _request: HashMap<String, Value>| {
             let data = data_shared_clone.read().unwrap();
-            // Imprimir el contenido de la base de datos
-
             let response = format!(
                 "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{}",
                 serde_json::to_string(&*data).unwrap()
@@ -128,23 +126,18 @@ fn main() {
         },
     );
 
-    // Ruta para agregar una nueva escudería (escritura concurrente permitida)
+    // Ruta para agregar una nueva escudería
     let data_shared_clone = Arc::clone(&data_shared);
     server.add_route(
         "POST",
-        "/escuderias",
+        "/api/escuderias",
         move |stream: &mut TcpStream, request: HashMap<String, Value>| {
             let mut data = data_shared_clone.write().unwrap();
             let mut response = String::new();
     
-            // Verificamos si el cuerpo contiene datos válidos de la escudería
-            print_hashmap(&request);
             if let Some(body) = request.get("body") {
-                // Agregar la nueva escudería al HashMap
-                // Aquí asumimos que el JSON del cuerpo contiene los datos de la escudería
                 match post_team(body.clone(), data.clone()) {
                     Ok(_) => {
-                        // Si se agrega correctamente, enviamos un mensaje de éxito
                         response = "HTTP/1.1 201 Created\r\nContent-Type: application/json\r\n\r\n{\"message\": \"Team added\"}".to_string();
                     }
                     Err(e) => {
@@ -152,7 +145,94 @@ fn main() {
                     }
                 }
             } else {
-                // Si no se encuentra el cuerpo, enviamos un error
+                response = "HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\n\r\n{\"error\": \"Invalid request body\"}".to_string();
+            }
+
+            stream.write(response.as_bytes()).unwrap();
+            stream.flush().unwrap();
+        },
+    );
+
+    // Ruta para actualizar una escudería (PUT)
+    let data_shared_clone = Arc::clone(&data_shared);
+    server.add_route(
+        "PUT",
+        "/api/escuderias/:name",
+        move |stream: &mut TcpStream, request: HashMap<String, Value>| {
+            let mut data = data_shared_clone.write().unwrap();
+            let mut response = String::new();
+            let pathAux = request.get("path").and_then(Value::as_str).unwrap_or("");
+            let path = &pathAux.replace("%20", " ");
+            let path_parts : Vec<&str> = path.split("/").collect();
+            let name = path_parts[3];
+            if let Some(body) = request.get("body") {
+                match put_team(body.clone(), data.clone()) {
+                    Ok(_) => {
+                        response = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"message\": \"Team updated\"}".to_string();
+                    }
+                    Err(e) => {
+                        response = format!("HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\n\r\n{{\"error\": \"{}\"}}", e);
+                    }
+                }
+            } else {
+                response = "HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\n\r\n{\"error\": \"Invalid request body\"}".to_string();
+            }
+
+            stream.write(response.as_bytes()).unwrap();
+            stream.flush().unwrap();
+        },
+    );
+
+    // Ruta para eliminar una escudería
+    let data_shared_clone = Arc::clone(&data_shared);
+    server.add_route(
+        "DELETE",
+        "/api/escuderias/:name",
+        move |stream: &mut TcpStream, request: HashMap<String, Value>| {
+            let mut data = data_shared_clone.write().unwrap();
+            let pathAux = request.get("path").and_then(Value::as_str).unwrap_or("");
+            let path = &pathAux.replace("%20", " ");
+            let path_parts : Vec<&str> = path.split("/").collect();
+            let team_name = path_parts[3];            
+            let mut response = String::new();
+            match delete_team(team_name, data.clone()) {
+                Ok(_) => {
+                    response = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"message\": \"Team deleted\"}".to_string();
+                }
+                Err(e) => {
+                    response = format!("HTTP/1.1 404 Not Found\r\nContent-Type: application/json\r\n\r\n{{\"error\": \"{}\"}}", e);
+                }
+            }
+
+            stream.write(response.as_bytes()).unwrap();
+            stream.flush().unwrap();
+        },
+    );
+
+    // Ruta para actualizar un conductor (PATCH)
+    let data_shared_clone = Arc::clone(&data_shared);
+    server.add_route(
+        "PATCH",
+        "/api/escuderias/:team_name/pilotos/:driver_name",
+        move |stream: &mut TcpStream, request: HashMap<String, Value>| {
+            let mut data = data_shared_clone.write().unwrap();
+            let mut response = String::new();
+            let pathAux = request.get("path").and_then(Value::as_str).unwrap_or("");
+            let path = &pathAux.replace("%20", " ");
+            let path_parts : Vec<&str> = path.split("/").collect();
+            let team_name = path_parts[3];
+            let driver_name = path_parts[5];
+            println!("team {} driver {}", team_name, driver_name);
+            if let Some(body) = request.get("body") {
+                match patch_driver(team_name, driver_name, body.clone(), data.clone()) {
+                    Ok(_) => {
+                        response = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"message\": \"Driver updated\"}".to_string();
+                    }
+                    Err(e) => {
+                        response = format!("HTTP/1.1 404 Not Found\r\nContent-Type: application/json\r\n\r\n{{\"error\": \"{}\"}}", e);
+                    }
+                }
+            } else {
                 response = "HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\n\r\n{\"error\": \"Invalid request body\"}".to_string();
             }
 
