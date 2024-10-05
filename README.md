@@ -39,6 +39,30 @@ cargo run
   
 > **Descripción**: Obtiene información de las escuderías (conductores, nombre, edad y país).
 
+### Obtener información sobre escuderías
+- **Método**: `POST`
+- **URL**: `http://127.0.0.1:7000/api/escuderias`
+  
+> **Descripción**: Obtiene información de las escuderías (conductores, nombre, edad y país).
+
+### Obtener información sobre escuderías
+- **Método**: `PUT`
+- **URL**: `http://127.0.0.1:7000/api/escuderias`
+  
+> **Descripción**: Obtiene información de las escuderías (conductores, nombre, edad y país).
+
+### Obtener información sobre escuderías
+- **Método**: `DELETE`
+- **URL**: `http://127.0.0.1:7000/api/escuderias`
+  
+> **Descripción**: Obtiene información de las escuderías (conductores, nombre, edad y país).
+
+### Obtener información sobre escuderías
+- **Método**: `PATCH`
+- **URL**: `http://127.0.0.1:7000/api/escuderias`
+  
+> **Descripción**: Obtiene información de las escuderías (conductores, nombre, edad y país).
+
 ---
 
 ## 📋 Descripción del Proyecto
@@ -125,12 +149,40 @@ Para probar el servidor, puedes utilizar la herramienta **Postman**. A continuac
 
 ### 6. Estructura del proyecto 🚧🚧🚧
 ```bash
-http_server/
-│
-├── src/                 # Código fuente del servidor
-├── tests/               # Pruebas unitarias
-├── Cargo.toml           # Archivo de configuración de Rust
-└── README.md            # Este archivo
+http_server
+├── app
+│   ├── Cargo.lock
+│   ├── Cargo.toml
+│   ├── data
+│   │   └── f1_data.json
+│   ├── src
+│   │   ├── http_functions
+│   │   │   ├── functions.rs
+│   │   │   └── mod.rs
+│   │   ├── json_hashmaps
+│   │   │   ├── f1_data_hashmap.rs
+│   │   │   └── mod.rs
+│   │   ├── lib.rs
+│   │   ├── main.rs
+│   │   ├── server_http
+│   │   │   ├── mod.rs
+│   │   │   ├── routes.rs
+│   │   │   ├── server.rs
+│   │   │   └── thread_pool.rs
+│   │   └── utils.rs
+│   ├── target
+│   │   ├── ...
+│   ├── tests
+│   │   └── tests.rs
+│   └── tmp
+│       ├── delete_body_dummie.json
+│       ├── patch_body_dummie.json
+│       ├── post_body_dummie.json
+│       └── put_body_dummie.json
+├── Dockerfile
+├── estructura
+├── LICENSE
+└── README.md
 ```
 
 ### 7. Análisis de resultados
