@@ -1,3 +1,14 @@
+// Instituto Tecnológico de Costa Rica 
+// Sistemas Operativos 
+// Proyecto 1: Http Server
+// Estudiantes: Brenda Badilla, Isaac Brenes, Joctan Porras
+// Descripción:
+//     Desarrollo de un servidor HTTP v1.x desde cero en Rust, soportando operaciones GET, PUT, POST, DELETE y UPDATE. 
+//     Implementa manejo de múltiples solicitudes mediante hilos (threads)
+//     Gestiona cookies para administración de sesiones.
+//
+// Repositorio: https://github.com/joctan-tec/http_server
+
 mod utils;
 use utils::print_hashmap;
 mod json_hashmaps;
