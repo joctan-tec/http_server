@@ -102,6 +102,26 @@ Para probar el servidor, puedes utilizar la herramienta **Postman**. A continuac
     "pais": "México"
   }
   ```
+- Para cambiar la información de una escudería:
+  ```http
+  PUT http://127.0.0.1:7000/api/escuderias/[nombreEscuderia]
+  Content-Type: application/json
+  Body: {
+    "nombre": "Nueva Escudería 2.0",
+    "conductor": "Juan Pérez",
+    "edad": 30,
+    "pais": "México"
+  }
+  ```
+- Para eliminar una escudería:
+  ```http
+  DELETE http://127.0.0.1:7000/api/escuderias/[nombreEscuderia]
+  ```
+- Para editar la información del conductor (edad, nombre y/o nacionalidad):
+  ```http
+  PATCH http://127.0.0.1:7000/api/escuderias/[nombreEscuderia]/pilotos/[nombrePiloto]
+  ```
+
 
 ### 6. Estructura del proyecto 🚧🚧🚧
 ```bash
