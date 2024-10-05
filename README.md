@@ -39,29 +39,29 @@ cargo run
   
 > **Descripción**: Obtiene información de las escuderías (conductores, nombre, edad y país).
 
-### Obtener información sobre escuderías
+### Agregar una escudería
 - **Método**: `POST`
 - **URL**: `http://127.0.0.1:7000/api/escuderias`
   
-> **Descripción**: Obtiene información de las escuderías (conductores, nombre, edad y país).
+> **Descripción**: Agrega una nueva escudería con toda su información (conductores, nombre, edad y país).
 
-### Obtener información sobre escuderías
+### Editar información de una escudería
 - **Método**: `PUT`
-- **URL**: `http://127.0.0.1:7000/api/escuderias`
+- **URL**: `http://127.0.0.1:7000/api/escuderias/[nombre de la escuderia]`
   
-> **Descripción**: Obtiene información de las escuderías (conductores, nombre, edad y país).
+> **Descripción**: Edita la información de una escudería (conductores, nombre, edad y país).
 
-### Obtener información sobre escuderías
+### Eliminar una escudería
 - **Método**: `DELETE`
-- **URL**: `http://127.0.0.1:7000/api/escuderias`
+- **URL**: `http://127.0.0.1:7000/api/escuderias/[nombre de la escuderia]`
   
-> **Descripción**: Obtiene información de las escuderías (conductores, nombre, edad y país).
+> **Descripción**: Elimina una escudería 
 
-### Obtener información sobre escuderías
+### Edita la información de un conductor 
 - **Método**: `PATCH`
-- **URL**: `http://127.0.0.1:7000/api/escuderias`
+- **URL**: `http://127.0.0.1:7000/api/escuderias/[nombre de la escuderia]/pilotos/[nombre del piloto]`
   
-> **Descripción**: Obtiene información de las escuderías (conductores, nombre, edad y país).
+> **Descripción**: Edita la información de un conductor (nombre, edad y/o nacionalidad).
 
 ---
 
