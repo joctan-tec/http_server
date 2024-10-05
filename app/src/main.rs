@@ -1,126 +1,85 @@
 mod utils;
-use utils::{print_hashmap, parse_request_into_hashmap};
+use utils::print_hashmap;
 mod json_hashmaps;
-use json_hashmaps::f1_data_hashmap::{get_f1_data, write_json_to_file};
+use json_hashmaps::f1_data_hashmap::get_f1_data;
 mod http_functions;
+use http_functions::functions::{post_team, put_team, delete_team, patch_driver};
 mod server_http;
 
 use serde_json::Value;
 use server_http::server::Server;
-use std::io::{BufRead, BufReader, Read};
-use std::{collections::HashMap, error::Error};
+
+use std::collections::HashMap;
 use std::{io::Write, net::TcpStream, sync::Arc, sync::RwLock};
 
 use std::thread;
 use std::time::Duration;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
 
-pub fn post_team(
-    new_team: Value,
-    mut f1_data: HashMap<String, Value>,
-) -> Result<(), Box<dyn Error>> {
-    let teams = f1_data.get_mut("teams").unwrap().as_array_mut().unwrap();
-
-    if teams.iter().any(|team| team["name"] == new_team["name"]) {
-        return Err("El equipo ya existe".into());
-    }
-
-    teams.push(new_team);
-    write_json_to_file(&f1_data);
-
-    Ok(())
+#[derive(Debug)]
+struct Cookie {
+    value: String,
+    created_at: u64, // Timestamp en segundos
 }
 
-pub fn put_team(
-    new_team: Value,
-    mut f1_data: HashMap<String, Value>,
-) -> Result<(), Box<dyn Error>> {
-    let teams: &mut Vec<Value> = f1_data.get_mut("teams").unwrap().as_array_mut().unwrap();
-
-    // Verificar si el equipo existe
-    if let Some(pos) = teams
-        .iter()
-        .position(|team| team["name"] == new_team["name"])
-    {
-        teams[pos] = new_team; // Actualizar el equipo
-        write_json_to_file(&f1_data);
-        Ok(())
-    } else {
-        teams.push(new_team.clone()); // Clonar el equipo antes de moverlo
-        write_json_to_file(&f1_data);
-        Err(format!(
-            "El equipo '{}' no existe, se agregó uno nuevo",
-            new_team["name"].as_str().unwrap()
-        )
-        .into())
-    }
-}
-
-pub fn delete_team(
-    team_name: &str,
-    mut f1_data: HashMap<String, Value>,
-) -> Result<(), Box<dyn Error>> {
-    let teams = f1_data.get_mut("teams").unwrap().as_array_mut().unwrap();
-
-    // Verificar si el equipo existe
-    if let Some(pos) = teams.iter().position(|team| team["name"] == team_name) {
-        teams.remove(pos); // Eliminar el equipo si se encuentra
-        write_json_to_file(&f1_data);
-        Ok(())
-    } else {
-        Err(format!("El equipo '{}' no existe", team_name).into()) // Retornar un error si no se encuentra
-    }
-}
-
-pub fn patch_driver(
-    team_name: &str,
-    driver_name: &str,
-    updated_data: Value,
-    mut f1_data: HashMap<String, Value>,
-) -> Result<(), Box<dyn Error>> {
-    let teams = f1_data.get_mut("teams").unwrap().as_array_mut().unwrap();
-
-    // Verificar si el equipo existe
-    if let Some(team) = teams.iter_mut().find(|team| team["name"] == team_name) {
-        let drivers = team.get_mut("drivers").unwrap().as_array_mut().unwrap();
-
-        // Verificar si el conductor existe
-        if let Some(driver) = drivers
-            .iter_mut()
-            .find(|driver| driver["name"] == driver_name)
-        {
-            for (key, value) in updated_data.as_object().unwrap() {
-                driver[key] = value.clone();
-            }
-            write_json_to_file(&f1_data);
-            Ok(())
-        } else {
-            Err(format!(
-                "El conductor '{}' no existe en el equipo '{}'",
-                driver_name, team_name
-            )
-            .into())
-        }
-    } else {
-        Err(format!("El equipo '{}' no existe", team_name).into())
+fn print_cookies(cookies: &RwLock<HashMap<usize, Cookie>>) {
+    let cookies_map = cookies.read().unwrap();
+    for (id, cookie) in cookies_map.iter() {
+        println!("Cookie ID: {}, Value: {}, Created At: {}", id, cookie.value, cookie.created_at);
     }
 }
 
 fn main() {
     let data_shared = Arc::new(RwLock::new(get_f1_data().unwrap()));
+    let cookies: Arc<RwLock<HashMap<usize, Cookie>>> = Arc::new(RwLock::new(HashMap::new()));
+    let cookie_counter = Arc::new(AtomicUsize::new(0)); // Contador para cookies
 
     let mut server = Server::new(20); // Pool de 20 hilos
 
     // Ruta para obtener escuderías
     let data_shared_clone = Arc::clone(&data_shared);
+    let cookies_clone = Arc::clone(&cookies);
+    let cookie_counter_clone = Arc::clone(&cookie_counter);
     server.add_route(
         "GET",
         "/api/escuderias",
-        move |stream: &mut TcpStream, _request: HashMap<String, Value>| {
+        move |stream: &mut TcpStream, request: HashMap<String, Value>| {
             let data = data_shared_clone.read().unwrap();
-            let response = format!(
-                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{}",
+            let mut response = String::new();
+
+            // Verificar si hay cookies en el request
+            let has_cookies = request.get("cookies").is_some();
+
+            let cookie_value;
+            let cookie_id;
+            let created_at = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+
+            if !has_cookies {
+                // Solo generar una nueva cookie si no hay cookies existentes
+                cookie_id = cookie_counter_clone.fetch_add(1, Ordering::SeqCst);
+                cookie_value = format!("session_{}", cookie_id);
+
+                // Guardar la cookie
+                {
+                    let mut cookies_map = cookies_clone.write().unwrap();
+                    cookies_map.insert(cookie_id, Cookie { value: cookie_value.clone(), created_at });
+                }
+
+                // Imprimir cookies
+                print_cookies(&cookies_clone);
+            } else {
+                // Si hay cookies, puedes obtener el valor de la cookie existente (esto depende de cómo lo manejes)
+                // Aquí podrías agregar lógica para manejar cookies existentes, si es necesario
+                cookie_value = String::from("existing_cookie_value"); // Placeholder
+            }
+
+            response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nSet-Cookie: session={}; Max-Age=60; HttpOnly\r\n\r\n{}",
+                cookie_value,
                 serde_json::to_string(&*data).unwrap()
             );
+
             stream.write(response.as_bytes()).unwrap();
             stream.flush().unwrap();
         },
@@ -128,24 +87,36 @@ fn main() {
 
     // Ruta para agregar una nueva escudería
     let data_shared_clone = Arc::clone(&data_shared);
+    let cookies_clone = Arc::clone(&cookies);
+    let cookie_counter_clone = Arc::clone(&cookie_counter);
     server.add_route(
         "POST",
         "/api/escuderias",
         move |stream: &mut TcpStream, request: HashMap<String, Value>| {
             let mut data = data_shared_clone.write().unwrap();
             let mut response = String::new();
-    
+            let cookie_id = cookie_counter_clone.fetch_add(1, Ordering::SeqCst);
+            let cookie_value = format!("session_{}", cookie_id);
+            let created_at = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+
+            // Guardar la cookie
+            let mut cookies_map = cookies_clone.write().unwrap();
+            cookies_map.insert(cookie_id, Cookie { value: cookie_value.clone(), created_at });
+
             if let Some(body) = request.get("body") {
-                match post_team(body.clone(), data.clone()) {
+                match post_team(body.clone(), &mut data) {
                     Ok(_) => {
-                        response = "HTTP/1.1 201 Created\r\nContent-Type: application/json\r\n\r\n{\"message\": \"Team added\"}".to_string();
+                        response = format!(
+                            "HTTP/1.1 201 Created\r\nContent-Type: application/json\r\nSet-Cookie: session={}; Max-Age=60; HttpOnly\r\n\r\n{{\"message\": \"Team added\"}}",
+                            cookie_value
+                        );
                     }
                     Err(e) => {
-                        response = format!("HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\n\r\n{{\"error\": \"{}\"}}", e);
+                        response = format!("HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\nSet-Cookie: session={}; Max-Age=60; HttpOnly\r\n\r\n{{\"error\": \"{}\"}}", cookie_value, e);
                     }
                 }
             } else {
-                response = "HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\n\r\n{\"error\": \"Invalid request body\"}".to_string();
+                response = format!("HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\nSet-Cookie: session={}; Max-Age=60; HttpOnly\r\n\r\n{{\"error\": \"Invalid request body\"}}", cookie_value);
             }
 
             stream.write(response.as_bytes()).unwrap();
@@ -155,27 +126,42 @@ fn main() {
 
     // Ruta para actualizar una escudería (PUT)
     let data_shared_clone = Arc::clone(&data_shared);
+    let cookies_clone = Arc::clone(&cookies);
+    let cookie_counter_clone = Arc::clone(&cookie_counter);
     server.add_route(
         "PUT",
         "/api/escuderias/:name",
         move |stream: &mut TcpStream, request: HashMap<String, Value>| {
             let mut data = data_shared_clone.write().unwrap();
             let mut response = String::new();
+            let cookie_id = cookie_counter_clone.fetch_add(1, Ordering::SeqCst);
+            let cookie_value = format!("session_{}", cookie_id);
+            let created_at = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+
+            // Guardar la cookie
+            let mut cookies_map = cookies_clone.write().unwrap();
+            cookies_map.insert(cookie_id, Cookie { value: cookie_value.clone(), created_at });
+
             let pathAux = request.get("path").and_then(Value::as_str).unwrap_or("");
             let path = &pathAux.replace("%20", " ");
-            let path_parts : Vec<&str> = path.split("/").collect();
+            let path_parts: Vec<&str> = path.split("/").collect();
             let name = path_parts[3];
+            println!("name {}", name);
+
             if let Some(body) = request.get("body") {
-                match put_team(body.clone(), data.clone()) {
+                match put_team(name, body.clone(), &mut data) {
                     Ok(_) => {
-                        response = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"message\": \"Team updated\"}".to_string();
+                        response = format!(
+                            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nSet-Cookie: session={}; Max-Age=60; HttpOnly\r\n\r\n{{\"message\": \"Team updated\"}}",
+                            cookie_value
+                        );
                     }
                     Err(e) => {
-                        response = format!("HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\n\r\n{{\"error\": \"{}\"}}", e);
+                        response = format!("HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\nSet-Cookie: session={}; Max-Age=60; HttpOnly\r\n\r\n{{\"error\": \"{}\"}}", cookie_value, e);
                     }
                 }
             } else {
-                response = "HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\n\r\n{\"error\": \"Invalid request body\"}".to_string();
+                response = format!("HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\nSet-Cookie: session={}; Max-Age=60; HttpOnly\r\n\r\n{{\"error\": \"Invalid request body\"}}", cookie_value);
             }
 
             stream.write(response.as_bytes()).unwrap();
@@ -185,6 +171,8 @@ fn main() {
 
     // Ruta para eliminar una escudería
     let data_shared_clone = Arc::clone(&data_shared);
+    let cookies_clone = Arc::clone(&cookies);
+    let cookie_counter_clone = Arc::clone(&cookie_counter);
     server.add_route(
         "DELETE",
         "/api/escuderias/:name",
@@ -192,15 +180,26 @@ fn main() {
             let mut data = data_shared_clone.write().unwrap();
             let pathAux = request.get("path").and_then(Value::as_str).unwrap_or("");
             let path = &pathAux.replace("%20", " ");
-            let path_parts : Vec<&str> = path.split("/").collect();
-            let team_name = path_parts[3];            
+            let path_parts: Vec<&str> = path.split("/").collect();
+            let team_name = path_parts[3];
             let mut response = String::new();
-            match delete_team(team_name, data.clone()) {
+            let cookie_id = cookie_counter_clone.fetch_add(1, Ordering::SeqCst);
+            let cookie_value = format!("session_{}", cookie_id);
+            let created_at = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+
+            // Guardar la cookie
+            let mut cookies_map = cookies_clone.write().unwrap();
+            cookies_map.insert(cookie_id, Cookie { value: cookie_value.clone(), created_at });
+
+            match delete_team(team_name, &mut data) {
                 Ok(_) => {
-                    response = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"message\": \"Team deleted\"}".to_string();
+                    response = format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nSet-Cookie: session={}; Max-Age=60; HttpOnly\r\n\r\n{{\"message\": \"Team deleted\"}}",
+                        cookie_value
+                    );
                 }
                 Err(e) => {
-                    response = format!("HTTP/1.1 404 Not Found\r\nContent-Type: application/json\r\n\r\n{{\"error\": \"{}\"}}", e);
+                    response = format!("HTTP/1.1 404 Not Found\r\nContent-Type: application/json\r\nSet-Cookie: session={}; Max-Age=60; HttpOnly\r\n\r\n{{\"error\": \"{}\"}}", cookie_value, e);
                 }
             }
 
@@ -211,29 +210,44 @@ fn main() {
 
     // Ruta para actualizar un conductor (PATCH)
     let data_shared_clone = Arc::clone(&data_shared);
+    let cookies_clone = Arc::clone(&cookies);
+    let cookie_counter_clone = Arc::clone(&cookie_counter);
     server.add_route(
         "PATCH",
         "/api/escuderias/:team_name/pilotos/:driver_name",
         move |stream: &mut TcpStream, request: HashMap<String, Value>| {
             let mut data = data_shared_clone.write().unwrap();
             let mut response = String::new();
+            let cookie_id = cookie_counter_clone.fetch_add(1, Ordering::SeqCst);
+            let cookie_value = format!("session_{}", cookie_id);
+            let created_at = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+
+            // Guardar la cookie
+            let mut cookies_map = cookies_clone.write().unwrap();
+            cookies_map.insert(cookie_id, Cookie { value: cookie_value.clone(), created_at });
+
             let pathAux = request.get("path").and_then(Value::as_str).unwrap_or("");
             let path = &pathAux.replace("%20", " ");
-            let path_parts : Vec<&str> = path.split("/").collect();
+            let path_parts: Vec<&str> = path.split("/").collect();
             let team_name = path_parts[3];
             let driver_name = path_parts[5];
             println!("team {} driver {}", team_name, driver_name);
+
             if let Some(body) = request.get("body") {
-                match patch_driver(team_name, driver_name, body.clone(), data.clone()) {
+                println!("body {}", body);
+                match patch_driver(team_name, driver_name, body.clone(), &mut data) {
                     Ok(_) => {
-                        response = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"message\": \"Driver updated\"}".to_string();
+                        response = format!(
+                            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nSet-Cookie: session={}; Max-Age=60; HttpOnly\r\n\r\n{{\"message\": \"Driver updated\"}}",
+                            cookie_value
+                        );
                     }
                     Err(e) => {
-                        response = format!("HTTP/1.1 404 Not Found\r\nContent-Type: application/json\r\n\r\n{{\"error\": \"{}\"}}", e);
+                        response = format!("HTTP/1.1 404 Not Found\r\nContent-Type: application/json\r\nSet-Cookie: session={}; Max-Age=60; HttpOnly\r\n\r\n{{\"error\": \"{}\"}}", cookie_value, e);
                     }
                 }
             } else {
-                response = "HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\n\r\n{\"error\": \"Invalid request body\"}".to_string();
+                response = format!("HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\nSet-Cookie: session={}; Max-Age=60; HttpOnly\r\n\r\n{{\"error\": \"Invalid request body\"}}", cookie_value);
             }
 
             stream.write(response.as_bytes()).unwrap();

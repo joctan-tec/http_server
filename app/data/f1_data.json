@@ -168,21 +168,6 @@
     {
       "drivers": [
         {
-          "age": 42,
-          "name": "San Chequito",
-          "nationality": "Finnish"
-        },
-        {
-          "age": 29,
-          "name": "Joctan",
-          "nationality": "Italian"
-        }
-      ],
-      "name": "Hola Team"
-    },
-    {
-      "drivers": [
-        {
           "age": 23,
           "nacionality": "British",
           "name": "Lando Norris"
@@ -196,36 +181,19 @@
       "name": "McLaren AAAAAAAAAAA"
     },
     {
-      "body": {
-        "drivers": [
-          {
-            "age": 42,
-            "name": "San Chequito",
-            "nationality": "Finnish"
-          },
-          {
-            "age": 29,
-            "name": "Joctan",
-            "nationality": "Italian"
-          }
-        ],
-        "name": "Hola Team"
-      }
-    },
-    {
       "drivers": [
         {
-          "age": 25,
-          "name": "Charles Leclerc",
-          "nationality": "Monacan"
+          "age": 42,
+          "name": "San Chequito",
+          "nationality": "Finnish"
         },
         {
-          "age": 38,
-          "name": "Lewis Hamilton",
-          "nationality": "British"
+          "age": 29,
+          "name": "Joctan",
+          "nationality": "Italian"
         }
       ],
-      "name": "Ferrari"
+      "name": "Hola"
     }
   ]
 }
