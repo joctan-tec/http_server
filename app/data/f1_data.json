@@ -33,7 +33,7 @@
     {
       "drivers": [
         {
-          "age": 38,
+          "age": 35,
           "nacionality": "British",
           "name": "Lewis Hamilton"
         },
@@ -59,21 +59,6 @@
         }
       ],
       "name": "Alpine F1 Team"
-    },
-    {
-      "drivers": [
-        {
-          "age": 23,
-          "nacionality": "British",
-          "name": "Lando Norris"
-        },
-        {
-          "age": 22,
-          "nacionality": "Australian",
-          "name": "Oscar Piastri"
-        }
-      ],
-      "name": "McLaren"
     },
     {
       "drivers": [
@@ -108,14 +93,14 @@
     {
       "drivers": [
         {
-          "age": 23,
-          "nacionality": "Japanese",
-          "name": "Yuki Tsunoda"
+          "age": 26,
+          "nacionality": "Dutch5",
+          "name": "Max Verstappen5"
         },
         {
-          "age": 28,
-          "nacionality": "Dutch",
-          "name": "Nyck de Vries"
+          "age": 34,
+          "nacionality": "Mexican5",
+          "name": "Sergio Perez5"
         }
       ],
       "name": "AlphaTauri"
