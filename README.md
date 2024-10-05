@@ -191,18 +191,18 @@ A continuación, se presenta un análisis del cumplimiento de los objetivos esta
 | Objetivo                | Estado  | Descripción breve                                |
 |-------------------------|---------|--------------------------------------------------|
 | Soporte de operaciones HTTP  | ✅       | Todas las operaciones principales implementadas.  |
-| Concurrencia con hilos   | ✅       | Se implementó un manejo concurrente usando hilos. |
-| Manejo de cookies        | ✅       | Implementado un sistema básico de gestión de cookies. |
-| Pruebas con Postman      | ✅       | Todas las funcionalidades fueron probadas con Postman. |
+| Concurrencia con hilos   | ✅       | Se implementó el manejo de cada solicitud mediante hilos y un pool de hilos manejado por el servidor, cada solicitud se envia a un hilo que hará su debido procesamiento, además, se implementa el bloqueo de la información compartida mediante el uso de un RwLock que permite multiples lecturas concurrentes mientras que no haya una operacion de write obteniendo el bloqueo.|
+| Manejo de cookies        | ✅       | Implementado un sistema básico de gestión de cookies, cuando el cliente no envia una cookie, el servidor genera un nuevo identificador de cookie y lo envia en los encabezados, asignando una fecha de expiración. Tambien cuando una cookie ha expirado se borra de la tabla manejada en la aplicación. |
+| Pruebas con Postman      | ✅       | Todas los métodos http se probaron con postman. |
 
-> **Completitud**: 100%
+> Completitud: 100%
 
 ---
 
 ## 🛠️ Tecnologías utilizadas
 
-- **Rust**: Lenguaje de programación utilizado para el desarrollo del servidor.
-- **Postman**: Herramienta utilizada para realizar pruebas de las operaciones HTTP.
+- Rust: Lenguaje de programación utilizado para el desarrollo del servidor.
+- Postman: Herramienta utilizada para realizar pruebas de las operaciones HTTP.
 
 ---
 
@@ -210,5 +210,8 @@ A continuación, se presenta un análisis del cumplimiento de los objetivos esta
 
 - [Documentación de Rust](https://www.rust-lang.org/)
 - [Guía sobre HTTP](https://developer.mozilla.org/es/docs/Web/HTTP)
+- [Multithreading](https://doc.rust-lang.org/beta/book/ch20-00-final-project-a-web-server.html)
+- [Http Cookies](https://developer.mozilla.org/es/docs/Web/HTTP/Cookies)
+- [RwLock](https://doc.rust-lang.org/std/sync/struct.RwLock.html)
 
 ---
