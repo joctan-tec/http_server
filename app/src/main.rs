@@ -104,6 +104,65 @@ fn main() {
         },
     );
 
+    // Ruta para obtener escuderías
+    let data_shared_clone = Arc::clone(&data_shared);
+    let cookies_clone = Arc::clone(&cookies);
+    let cookie_counter_clone = Arc::clone(&cookie_counter);
+    server.add_route(
+        "GET",
+        "/api/escuderias_lenta",
+        move |stream: &mut TcpStream, request: HashMap<String, Value>| {
+            clean_expired_cookies(&cookies_clone, 60); // Limpiar cookies expiradas (60 segundos)
+            let data = data_shared_clone.read().unwrap();
+            let cookie_value = handle_cookie(&request, &cookies_clone, &cookie_counter_clone);
+            thread::sleep(Duration::from_secs(5)); // Simular una operación lenta
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nSet-Cookie: session={}; Max-Age=60; HttpOnly\r\n\r\n{}",
+                cookie_value,
+                serde_json::to_string(&*data).unwrap()
+            );
+
+            stream.write(response.as_bytes()).unwrap();
+            stream.flush().unwrap();
+        },
+    );
+
+        // Ruta para agregar una nueva escudería
+        let data_shared_clone = Arc::clone(&data_shared);
+        let cookies_clone = Arc::clone(&cookies);
+        let cookie_counter_clone = Arc::clone(&cookie_counter);
+        server.add_route(
+            "POST",
+            "/api/escuderias_lenta",
+            move |stream: &mut TcpStream, request: HashMap<String, Value>| {
+                clean_expired_cookies(&cookies_clone, 60); // Limpiar cookies expiradas
+                let mut data = data_shared_clone.write().unwrap();
+                let cookie_value = handle_cookie(&request, &cookies_clone, &cookie_counter_clone);
+                
+                thread::sleep(Duration::from_secs(5)); // Simular una operación lenta
+
+                let mut response = String::new();
+                if let Some(body) = request.get("body") {
+                    match post_team(body.clone(), &mut data) {
+                        Ok(_) => {
+                            response = format!(
+                                "HTTP/1.1 201 Created\r\nContent-Type: application/json\r\nSet-Cookie: session={}; Max-Age=60; HttpOnly\r\n\r\n{{\"message\": \"Team added\"}}",
+                                cookie_value
+                            );
+                        }
+                        Err(e) => {
+                            response = format!("HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\nSet-Cookie: session={}; Max-Age=60; HttpOnly\r\n\r\n{{\"error\": \"{}\"}}", cookie_value, e);
+                        }
+                    }
+                } else {
+                    response = format!("HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\nSet-Cookie: session={}; Max-Age=60; HttpOnly\r\n\r\n{{\"error\": \"Invalid request body\"}}", cookie_value);
+                }
+    
+                stream.write(response.as_bytes()).unwrap();
+                stream.flush().unwrap();
+            },
+        );
+
     // Ruta para agregar una nueva escudería
     let data_shared_clone = Arc::clone(&data_shared);
     let cookies_clone = Arc::clone(&cookies);
@@ -154,7 +213,6 @@ fn main() {
             let path = &pathAux.replace("%20", " ");
             let path_parts: Vec<&str> = path.split("/").collect();
             let name = path_parts[3];
-            println!("name {}", name);
 
             let mut response = String::new();
             if let Some(body) = request.get("body") {
@@ -219,7 +277,7 @@ fn main() {
     let cookie_counter_clone = Arc::clone(&cookie_counter);
     server.add_route(
         "PATCH",
-        "/api/conductores/:name",
+        "/api/escuderias/:team_name/pilotos/:driver_name",
         move |stream: &mut TcpStream, request: HashMap<String, Value>| {
             clean_expired_cookies(&cookies_clone, 60); // Limpiar cookies expiradas
             let mut data = data_shared_clone.write().unwrap();
@@ -230,7 +288,7 @@ fn main() {
             let path_parts: Vec<&str> = path.split("/").collect();
             let team_name = path_parts[3];
             let driver_name = path_parts[5];
-            println!("team {} driver {}", team_name, driver_name);
+            
 
             let mut response = String::new();
             if let Some(body) = request.get("body") {

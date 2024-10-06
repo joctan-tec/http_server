@@ -1,0 +1,37 @@
+
+http_server
+├── app
+│   ├── Cargo.lock
+│   ├── Cargo.toml
+│   ├── data
+│   │   └── f1_data.json
+│   ├── src
+│   │   ├── http_functions
+│   │   │   ├── functions.rs
+│   │   │   └── mod.rs
+│   │   ├── json_hashmaps
+│   │   │   ├── f1_data_hashmap.rs
+│   │   │   └── mod.rs
+│   │   ├── lib.rs
+│   │   ├── main.rs
+│   │   ├── server_http
+│   │   │   ├── mod.rs
+│   │   │   ├── routes.rs
+│   │   │   ├── server.rs
+│   │   │   └── thread_pool.rs
+│   │   └── utils.rs
+│   ├── target
+│   │   ├── ...
+│   ├── tests
+│   │   └── tests.rs
+│   └── tmp
+│       ├── delete_body_dummie.json
+│       ├── patch_body_dummie.json
+│       ├── post_body_dummie.json
+│       └── put_body_dummie.json
+├── Dockerfile
+├── estructura
+├── LICENSE
+└── README.md
+
+47 directories, 477 files

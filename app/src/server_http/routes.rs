@@ -68,10 +68,14 @@ impl Router {
     
     pub fn match_route(&self, route_key: &str, path: &str) -> Option<HashMap<String, Value>> {        let route_parts: Vec<&str> = route_key.split('/').collect();
         let path_parts: Vec<&str> = path.split('/').collect();
+        println!("Ruta encontrada: {}", route_key);
+        println!("Path: {}", path);
     
         if route_parts.len() != path_parts.len() {
             return None;
         }
+
+        
     
         let mut params = HashMap::new();
     

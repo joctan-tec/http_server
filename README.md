@@ -101,16 +101,65 @@ Este proyecto implementa un servidor HTTP v1.x funcional desde cero utilizando *
 
 
 ### 1. Diseño del servidor 🚧🚧🚧
-El servidor se basa en una arquitectura concurrente, donde cada conexión entrante es manejada por un hilo independiente. Se utiliza un pool de hilos (thread pool) para reutilizar recursos y mejorar la eficiencia del servidor. Además, el servidor puede gestionar tanto solicitudes JSON como en texto plano. Las operaciones HTTP están bien definidas dentro de las funciones que corresponden a cada método, y los datos se gestionan mediante un sistema sencillo de almacenamiento.
+El servidor está basado en una arquitectura *multihilo* que permite gestionar múltiples conexiones concurrentes. El diseño utiliza el modelo *cliente-servidor*, donde el servidor espera conexiones de los clientes y responde a las solicitudes HTTP con los datos apropiados. El servidor es capaz de manejar solicitudes HTTP GET, POST, PUT y DELETE, permitiendo la interacción con los recursos de manera eficiente.
+
+### Arquitectura
+El servidor sigue un patrón *multihilo*, en el que cada solicitud de cliente se maneja de manera independiente por un nuevo hilo. Esto garantiza que múltiples clientes puedan interactuar simultáneamente sin bloqueo o retraso significativo.
+
+- *Aceptación de conexiones:* El servidor escucha en un puerto definido y acepta conexiones TCP desde los clientes.
+- *Manejo de solicitudes:* Una vez que se acepta la conexión, se crea un nuevo hilo para manejar la solicitud entrante.
+- *Enrutamiento:* Dependiendo de la operación HTTP (GET, POST, etc.), el servidor enruta la solicitud al controlador adecuado que gestiona la lógica de la operación. Además valida que la ruta siga el formato necesitado para cada operación. 
 
 ### 2. Implementación de la concurrencia 🚧🚧🚧
-Para la concurrencia, el servidor utiliza un **modelo multihilo (threading)**. Cada solicitud de cliente es procesada por un hilo del pool de hilos. Se ha implementado un mecanismo de **sincronización** que garantiza que los recursos compartidos no sufran bloqueos ni condiciones de carrera. Se utilizan primitivos de sincronización como **Mutex** y **Arc** para proteger el acceso concurrente a los datos.
+El servidor utiliza un esquema de *concurrencia basado en hilos*. Cada vez que llega una solicitud, el servidor crea un nuevo hilo para gestionarla, lo que permite que múltiples solicitudes sean procesadas de manera concurrente.
+
+### Gestión de Hilos
+- *Hilos individuales por conexión:* Cada conexión que recibe el servidor se asigna a un hilo nuevo, lo que permite el manejo concurrente de múltiples clientes sin bloqueo de la aplicación.
+- *Pool de hilos:*  Evitar que la máquina se quede sin hilos, se crea un pool para manejar un numero fijo de hilos.
+
+### Mitigación de Bloqueos y Condiciones de Carrera
+Para evitar problemas de concurrencia como bloqueos o condiciones de carrera, se implementan las siguientes técnicas:
+- *Bloqueo en recursos compartidos:* Se utiliza un mecanismos de sincronización de RUST llamado RwLock para controlar el acceso al recurso compartido, de esta forma permitimos que múltiples lecturas se hagan concurrentemente. Pero solo una escritura a la vez. 
+- *Variables atómicas:* En operaciones críticas que requieren modificación de variables compartidas, se emplean variables atómicas para asegurar que sólo un hilo a la vez pueda realizar modificaciones.
+
 
 ### 3. Manejo de cookies 🚧🚧🚧
-Las **cookies** se utilizan para mantener el estado de sesión de los usuarios entre solicitudes. Cada vez que un usuario realiza una operación, se genera o valida una cookie asociada a su sesión. Las cookies contienen un identificador único que es almacenado y validado en el servidor, permitiendo gestionar el estado de forma sencilla y segura.
+Las **cookies** se utilizan para mantener el estado de sesión de los usuarios entre solicitudes. Cada vez que un usuario realiza una operación, se genera o valida una cookie asociada a su sesión. Las cookies contienen un identificador único conformado por el nombre session_[numero] siendo el número correspondiente al número se sesión asignado de manera ascendente, que es almacenado y validado en el cliente.
+
+### Creación de Cookies
+- Las cookies se generan mediante una función dedicada que asigna un identificador único a cada sesión de usuario conformado por el nombre session_[numero] siendo el número correspondiente al número se sesión asignado de manera ascendente.
+- En el cliente se almacena y validan las cookies. 
+- Se asigna una expiración de un día como manejo de cookies. 
+
+### Almacenamiento de Cookies
+- Las cookies son almacenadas de manera segura en el lado del cliente.
+
+### Eliminación de Cookies
+- Las cookies se eliminan en el cliente estableciendo una fecha de expiración pasada en el encabezado Set-Cookie.
+- El servidor también puede invalidar una cookie al borrar la sesión correspondiente en su almacenamiento interno, asegurando que cualquier cookie obsoleta no sea reconocida en futuras solicitudes.
+
 
 ### 4. Instrucciones para ejecutar y probar el servidor 🚧🚧🚧
-Para probar el servidor, puedes utilizar la herramienta **Postman**. A continuación, se detallan algunos comandos para verificar el funcionamiento de los endpoints:
+Para ejecutar el servidor se tienen las siguientes opciones:
+
+```bash
+# Clona el repositorio
+git clone https://github.com/joctan-tec/http_server.git
+
+# Accede a la carpeta del proyecto
+cd http_server/src/
+
+# Ejecuta el servidor
+cargo run
+```
+
+O bien,
+
+```bash
+docker run -p 7000:7000 joctan04/http_server_proyecto1_so:latest
+```
+
+Para probar el servidor, se puede utilizar la herramienta **Postman**. A continuación, se detallan algunos comandos para verificar el funcionamiento de los endpoints:
 - Para obtener la lista de escuderías:
   ```http
   GET http://127.0.0.1:7000/api/escuderias
@@ -119,23 +168,43 @@ Para probar el servidor, puedes utilizar la herramienta **Postman**. A continuac
   ```http
   POST http://127.0.0.1:7000/api/escuderias
   Content-Type: application/json
-  Body: {
-    "nombre": "Nueva Escudería",
-    "conductor": "Juan Pérez",
-    "edad": 30,
-    "pais": "México"
-  }
+  {
+      "drivers": [
+        {
+          "age": 25,
+          "nacionality": "Dutch",
+          "name": "Max Verstappen"
+        },
+        {
+          "age": 33,
+          "nacionality": "Mexican",
+          "name": "Sergio Perez"
+        }
+      ],
+      "name": "Red Bull Racing"
+    }
+           ]
+         }
   ```
 - Para cambiar la información de una escudería:
   ```http
   PUT http://127.0.0.1:7000/api/escuderias/[nombreEscuderia]
   Content-Type: application/json
-  Body: {
-    "nombre": "Nueva Escudería 2.0",
-    "conductor": "Juan Pérez",
-    "edad": 30,
-    "pais": "México"
-  }
+  {
+      "drivers": [
+        {
+          "age": 25,
+          "nacionality": "Dutch",
+          "name": "Max Verstappen"
+        },
+        {
+          "age": 33,
+          "nacionality": "Mexican",
+          "name": "Sergio Perez"
+        }
+      ],
+      "name": "Red Bull Racing"
+    }
   ```
 - Para eliminar una escudería:
   ```http
@@ -144,10 +213,79 @@ Para probar el servidor, puedes utilizar la herramienta **Postman**. A continuac
 - Para editar la información del conductor (edad, nombre y/o nacionalidad):
   ```http
   PATCH http://127.0.0.1:7000/api/escuderias/[nombreEscuderia]/pilotos/[nombrePiloto]
+  {
+     "age": 33,
+     "nacionality": "Mexican",
+     "name": "Sergio Perez"
+  }
   ```
 
+---
+### 5. Resultados de pruebas
 
-### 6. Estructura del proyecto 🚧🚧🚧
+#### Pruebas unitarias
+
+Para ejecutar las pruebas unitarias se tiene que realizar los siguientes pasos:
+```bash
+# Ejecutar el servidor para poder ejecutar las pruebas de endpoints
+cargo run
+
+# Se debe de abrir una nueva consola para las pruebas
+cargo test
+```
+
+**Resultados de las pruebas**
+
+![alt text](/images/image-11.png)
+
+##### Método `GET`
+
+**Resultado de cookie**
+![alt text](/images/image.png)
+
+**Resultado de respuesta**
+![alt text](/images/image-0.png)
+
+##### Método `POST`
+
+**Prueba con body correcto**
+![alt text](/images/image-1.png)
+
+**Resultado**
+![alt text](/images/image-2.png)
+
+**Prueba con body incorrecto**
+![alt text](/images/image-3.png)
+
+##### Método `PUT`
+
+**Prueba con body correcto**
+![alt text](/images/image-4.png)
+
+**Prueba con body incorrecto**
+![alt text](/images/image-5.png)
+
+##### Método `DELETE`
+
+**Prueba con equipo existente**
+![alt text](/images/image-7.png)
+
+**Prueba con equipo inexsistente**
+![alt text](/images/image-6.png)
+
+##### Método `PATCH`
+
+**Prueba con datos correctos**
+![alt text](/images/image-8.png)
+
+**Prueba con datos incorrectos**
+![alt text](/images/image-9.png)
+![alt text](/images/image-10.png)
+
+
+---
+
+### 6. Estructura del proyecto
 ```bash
 http_server
 ├── app
